@@ -1,0 +1,431 @@
+/* ==========================================================================
+   谱页样式（/t/:slug/print）
+   层级：tokens → layout → component → state → media
+   同一属性只在一处声明；欧式不再挂 .print-sheet，消除覆盖链。
+
+   布局状态表
+                    spread        page              spine     纸面
+   屏幕 ≥900px      flex 页对     右页在右、左页在左  显示      自适应，不套 A4
+   屏幕 <900px      column       右页在上          隐藏      自适应
+   屏幕 <639px      —            纸面隐藏          隐藏      流式预览
+   打印 A4 竖排     block        两页各一张 A4      隐藏      默认纸张
+   打印 A3 横排     flex 页对     跨页并排          显示      两张 A4 合成 A3
+   ========================================================================== */
+
+/* 纸张尺寸由 PrintPage 按所选尺寸动态注入 @page（A4 竖排 / A3 横排），不在此写死 */
+
+/* ── ① tokens ───────────────────────────────────────────────────────────── */
+:root {
+  --euro-ink: #1c1c1c;
+  --euro-paper: #fff;
+  --euro-line-w: 2px;
+  --euro-line-thin: 1px;
+  --euro-gap: 6px;
+  --euro-band-h: 170px;
+  --euro-col-unit: 17px;
+  --euro-font-name: 18px;
+  --euro-font-memo: 9px;
+  --euro-col-unit: 15px;
+  --euro-ruler-w: 40px;
+  --euro-branch-w: 30px;
+  --euro-spine-w: 56px;
+  /* 谱页统一宋体：正文、标尺、落款、工具栏共用同一字族，不再另设黑体 */
+  --euro-serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+}
+
+/* ── ② layout：页面骨架 ─────────────────────────────────────────────────── */
+.print-page {
+  min-height: 100vh; padding-bottom: 40px;
+  background: #f4f1ea; color: var(--euro-ink);
+  /* 谱页整体统一宋体：正文、标尺、落款、工具栏一律同族，不再混用黑体 */
+  font-family: var(--euro-serif);
+}
+.print-loading {
+  display: flex; min-height: 70vh; align-items: center; justify-content: center;
+  gap: 10px; font-size: 12.5px; letter-spacing: .16em; color: #6b787d;
+}
+.print-body { margin-top: 18px; padding: 0 28px 8px; overflow-x: auto; }
+.print-empty { padding: 60px 0; text-align: center; font-size: 12px; color: #7a746a; }
+
+/* 通用纸面（欧苏谱 / 画布 / 树形谱）；欧式谱用 .euro-page，不挂此类 */
+.print-sheet {
+  width: 100%; max-width: 1460px; margin: 0 auto 26px; padding: 14px 18px 8px;
+  background: var(--euro-paper); border: var(--euro-line-thin) solid var(--euro-ink);
+  outline: 3px solid var(--euro-ink); outline-offset: 4px;
+}
+.print-sheet-head, .print-sheet-foot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px; color: var(--euro-ink);
+}
+.print-sheet-head { padding-bottom: 8px; border-bottom: var(--euro-line-thin) solid var(--euro-ink); }
+.print-sheet-foot {
+  margin-top: 8px; padding-top: 6px; border-top: var(--euro-line-thin) solid #ded7c6;
+  font-size: 9.5px; letter-spacing: .08em; color: #7a746a;
+}
+
+/* ── ③ component：档位工具栏与凡例 ─────────────────────────────────────── */
+.print-toolbar {
+  position: sticky; top: 0; z-index: 20;
+  background: #fbfaf7; border-bottom: var(--euro-line-thin) solid #ded7c6;
+}
+.print-toolbar-inner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  max-width: 1280px; margin: 0 auto; padding: 10px 20px;
+}
+.print-tabs { display: flex; flex: 1 1 480px; gap: 4px; overflow-x: auto; }
+.print-tab {
+  flex: none; padding: 6px 10px; font-size: 11.5px; letter-spacing: .06em;
+  color: #4b5b61; background: transparent; border: var(--euro-line-thin) solid transparent; cursor: pointer;
+  border-radius: 8px;
+}
+.print-tab:hover { background: #ece7da; }
+.print-tab--active { background: #12303b; border-color: #12303b; color: #fbfaf7; }
+.print-toolbar-hint { font-size: 10px; letter-spacing: .08em; color: #8a8578; }
+.print-sizes { display: flex; gap: 4px; }
+.print-size {
+  flex: none; padding: 5px 9px; font-size: 11px; letter-spacing: .06em;
+  color: #4b5b61; background: transparent; border: var(--euro-line-thin) solid #cfd9cf; cursor: pointer;
+}
+.print-size:hover { background: #ece7da; }
+.print-size--active { background: #12303b; border-color: #12303b; color: #fbfaf7; }
+.print-legend {
+  max-width: 1280px; margin: 14px auto 0; padding: 0 20px;
+  font-size: 11px; line-height: 1.7; letter-spacing: .04em; color: #5b6a70;
+}
+
+/* ── ③ component：屏幕 5 档的画布容器 ──────────────────────────────────── */
+.print-flow-stage { width: 100%; height: 72vh; }
+/* 头像尺寸是 36px 定值，跟着画布倍率一起放大，见 src/lib/minFontSize.ts */
+.print-flow-stage .n-avatar { zoom: var(--pf-boost, 1); }
+.print-tree-body { height: 72vh; }
+
+/* ── ③ component：垂丝谱装帧（左竖排谱名 · 世次标尺 · 右纪年落款） ────────── */
+/* 装帧框把画布夹在中间：谱名栏与标尺之间一条竖线，标尺与画布连通不设线，
+   落款栏与画布之间一条竖线，外圈沿用 .print-sheet 的双线 */
+.su-frame {
+  display: flex; align-items: stretch; margin-top: 10px;
+  border: var(--euro-line-thin) solid var(--euro-ink);
+  /* 标尺标签与画布内容跟着视口走，向上拖动时 top 会变成负值；
+     不裁剪就会画到框外压住上方标题，故在装帧框边界处裁掉越界部分 */
+  overflow: hidden;
+}
+/* 左：竖排谱名，整栏高度内居中 */
+.su-frame__title {
+  display: flex; flex: 0 0 64px; align-items: center; justify-content: center;
+  border-right: var(--euro-line-thin) solid var(--euro-ink);
+}
+.su-frame__title span {
+  font-family: var(--euro-serif); font-size: 27px; line-height: 1.1; letter-spacing: .22em;
+  writing-mode: vertical-rl; text-orientation: upright;
+}
+/* 中左：世次标尺。标签按各世行心绝对定位，top 由 --ruler-top 提供（屏幕）；
+   右侧留白把世次标注与最左一列姓名拉开 */
+.su-frame__ruler {
+  position: relative; flex: 0 0 30px; margin-right: 18px;
+}
+.su-frame__ruler > span {
+  position: absolute; left: 0; right: 0;
+  /* zoom 会把定位偏移一起缩小，故 top 先按同一倍率放大 */
+  top: calc(var(--ruler-top) * var(--pf-boost, 1));
+  transform: translateY(-50%); text-align: center;
+  font-size: calc(9px * var(--pf-boost, 1)); letter-spacing: .06em; color: #8f8a80; white-space: nowrap;
+  zoom: var(--pf-zoom, 1);
+}
+.su-frame__canvas { flex: 1 1 auto; min-width: 0; }
+/* 右：竖排纪年落款，上下两段（先公元年份，再干支） */
+.su-frame__imprint {
+  display: flex; flex: 0 0 40px; flex-direction: column; align-items: center; justify-content: center;
+  gap: 26px; border-left: var(--euro-line-thin) solid var(--euro-ink);
+}
+.su-frame__imprint span {
+  font-family: var(--euro-serif); font-size: 12px; letter-spacing: .18em;
+  writing-mode: vertical-rl; text-orientation: upright;
+}
+
+/* ── ③ component：欧苏结合 ─────────────────────────────────────────────── */
+.combo-frame {
+  display: flex; align-items: stretch; margin-top: 10px;
+  border: var(--euro-line-thin) solid var(--euro-ink);
+}
+/* 小传区宽度随内容走，不再用 56% 硬卡：分卷时已按纸宽算过每卷列数，
+   宽度本就在预算内；一旦用百分比封顶，屏显窄框（56% 约 660px）会把最左一栏
+   挤到左边界之外，表现为最外侧文字被边框压住、传文缺字。 */
+.combo-frame__bio { flex: 0 0 auto; min-width: 0; overflow: hidden; }
+/* 屏显保底宽：一整框要 小传 + 书脊 + 吊线图 都放开才不被互相挤压。
+   窗口不够宽时改为纸面横向滚动（.print-body 已是 overflow-x:auto），
+   版式与 A3 打印一致；打印时下列 min-width 归零，按纸宽出页。 */
+.print-sheet--combo { min-width: 1420px; }
+.combo-frame__spine {
+  display: flex; flex: 0 0 46px; flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px; writing-mode: vertical-rl; text-orientation: upright;
+  border-left: var(--euro-line-thin) solid var(--euro-ink);
+  border-right: var(--euro-line-thin) solid var(--euro-ink);
+  font-size: 12px; letter-spacing: .3em;
+}
+.combo-frame__spine b { font-size: 16px; font-weight: 600; letter-spacing: .44em; }
+.combo-frame__spine i { font-style: normal; font-size: 9.5px; letter-spacing: .2em; color: #4a4a4a; }
+/* 图区不吃高度：绝对定位铺满剩下的一格，框高由小传决定，
+   否则 SVG 会按 viewBox 比例把整框撑高，打印时被顶到下一页 */
+.combo-frame__chart-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
+.combo-frame__chart {
+  position: absolute; inset: 0; display: block; width: 100%; height: 100%;
+}
+.combo-frame__chart .ext text { fill: #6b6257; }
+/* 竖排小传：世代为组、组内一栏一人，右起；栏首朱点为名。
+   组与栏都用 flex 排（不用百分比高度），打印时高度只由内容决定，
+   否则 height:100% 会按纸高撑开，整框被顶到下一页 */
+.combo-cols { display: flex; flex-direction: row-reverse; align-items: stretch; }
+.combo-col {
+  display: flex; flex-direction: row-reverse; align-items: stretch;
+  flex: 0 0 auto; min-height: 420px; padding: 10px 0;
+  border-left: var(--euro-line-thin) solid #ded7c6;
+}
+.combo-col:last-child { border-left: 0; }
+.combo-col__head {
+  flex: 0 0 auto; writing-mode: vertical-rl; text-orientation: upright;
+  padding: 0 3px 0 4px; border-left: var(--euro-line-thin) solid #ded7c6;
+  font-size: 12px; letter-spacing: .18em; color: #8f7134;
+}
+.combo-person {
+  flex: 0 0 auto; width: 28px; padding: 10px 0 10px 6px; overflow: hidden;
+  writing-mode: vertical-rl; text-orientation: upright;
+  border-left: var(--euro-line-thin) solid #e2dacb;
+}
+.combo-person__name {
+  font-family: var(--euro-serif); font-size: 17px; font-weight: 600; letter-spacing: .1em;
+}
+.combo-person__name::before {
+  content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: #b3261e; margin-bottom: 7px;
+}
+.combo-person__memo {
+  margin-top: 9px; font-size: 12px; line-height: 1.5; letter-spacing: .02em; color: #575146;
+}
+/* 外衍（出嫁女之子女）：名与传转灰，朱点改空心 */
+.combo-person--extended .combo-person__name,
+.combo-person--extended .combo-person__memo { color: #6b6257; }
+.combo-person--extended .combo-person__name::before {
+  background: none; border: var(--euro-line-thin) solid #8f8a80;
+}
+
+/* ── ③ component：欧式五世一表 ─────────────────────────────────────────── */
+/* 横向长卷：所有世代 band 纵向摞在一起，外层 overflow-x 滚动；不分页 */
+.euro-scroll-wrap { display: flex; flex-direction: column; gap: 18px; }
+.euro-chart { border: var(--euro-line-w) solid var(--euro-ink); background: var(--euro-paper); }
+.euro-chart__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 8px 12px; border-bottom: var(--euro-line-thin) solid var(--euro-ink);
+  font-size: 10px; letter-spacing: .08em; color: var(--euro-ink);
+}
+.euro-chart__head b { font-family: var(--euro-serif); font-size: 15px; letter-spacing: .14em; }
+/* 左列滚动区：只负责长卷内容横向滚动，不包含右侧面板 */
+.euro-scroll { flex: 1 1 0; min-width: 0; overflow-x: auto; overflow-y: hidden; }
+/* 外层左右两列：左侧滚动、右侧世次面板固定 */
+.euro-chart__body { display: flex; align-items: stretch; min-width: 0; padding: 10px; }
+
+.euro-page {
+  display: flex; flex: 1 1 0; flex-direction: column; min-width: 0; margin: 0 7px;
+  padding: 10px; background: var(--euro-paper);
+  border: var(--euro-line-w) solid var(--euro-ink);
+  outline: var(--euro-line-thin) solid var(--euro-ink); outline-offset: 3px;
+}
+.euro-page__head, .euro-page__foot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 10px; letter-spacing: .08em; color: var(--euro-ink);
+}
+.euro-page__head { padding-bottom: 6px; border-bottom: var(--euro-line-thin) solid var(--euro-ink); }
+.euro-page__head b { font-family: var(--euro-serif); font-size: 15px; letter-spacing: .14em; }
+.euro-page__foot { margin-top: 6px; padding-top: 5px; border-top: var(--euro-line-thin) solid var(--euro-ink); }
+.euro-page__body {
+  display: flex; flex: 1 1 auto; align-items: stretch; margin-top: 8px;
+}
+.euro-bands { min-width: max-content; }
+/* 每带固定高度，两页共用同一高度，横线左右对齐。
+   列宽由行内诸人各自的小传量决定（见 useEuroLayout 的 bands），
+   justify-content: end 让每世自纸面右端起排，人少的世代不会在右侧留下空档；
+   column-gap 保证相邻两人之间始终有留白。 */
+.euro-band {
+  display: grid; grid-template-columns: repeat(var(--euro-cols), var(--euro-col-w));
+  justify-content: end; column-gap: 10px;
+  height: var(--euro-band-h); border-bottom: var(--euro-line-w) solid var(--euro-ink);
+}
+.euro-band:last-child { border-bottom: 0; }
+.euro-cell { position: relative; min-width: 0; overflow: hidden; }
+/* 外衍：淡墨以示非本族血脉；本族血脉不带此类，故不展示外衍时完全无影响 */
+.euro-cell--extended { opacity: .6; }
+.euro-person {
+  display: flex; flex-direction: row-reverse; align-items: flex-start;
+  gap: 3px; padding: 4px 3px; height: 100%;
+}
+.euro-person__name {
+  font-family: var(--euro-serif); font-size: var(--euro-font-name); font-weight: 600;
+  letter-spacing: .1em; writing-mode: vertical-rl; text-orientation: upright;
+}
+/* 行传格内 7–9px 小字落在定宽格里，浏览器最小字号会把它们撑出格子、被 overflow 裁掉。
+   做法：{度量} 乘 --pf-boost 放大到下限之上，再由 zoom 把视觉尺寸收回原样。
+   --pf-boost 由 .euro-scroll-wrap 按运行时探测结果写入（见 src/lib/minFontSize.ts）。 */
+.euro-person__honor {
+  padding: calc(4px * var(--pf-boost, 1)) calc(2px * var(--pf-boost, 1));
+  border: var(--euro-line-thin) solid var(--euro-ink);
+  border-width: calc(var(--euro-line-thin) * var(--pf-boost, 1));
+  font-size: calc(9px * var(--pf-boost, 1));
+  letter-spacing: .1em; writing-mode: vertical-rl; text-orientation: upright;
+  zoom: var(--pf-zoom, 1);
+}
+/* 父信息在上层、子嗣在下沉层：两层上下排布，宽度取较宽者，不累加 */
+.euro-memo { display: flex; flex-direction: column; height: 100%; }
+.euro-memo__main { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 2px; }
+.euro-memo__item {
+  max-height: calc((var(--euro-band-h) - 50px) * var(--pf-boost, 1));
+  font-family: var(--euro-serif); font-size: calc(var(--euro-font-memo) * var(--pf-boost, 1));
+  line-height: 1.4; letter-spacing: .04em; color: var(--euro-ink);
+  writing-mode: vertical-rl; text-orientation: upright;
+  zoom: var(--pf-zoom, 1);
+}
+.euro-memo__item--strong { font-weight: 700; }
+.euro-memo__children {
+  display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 3px;
+  margin-top: auto; padding-bottom: 2px;
+}
+.euro-memo__child { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.euro-memo__child-name {
+  max-height: calc(42px * var(--pf-boost, 1));
+  font-family: var(--euro-serif); font-size: calc(9px * var(--pf-boost, 1)); line-height: 1.3;
+  color: var(--euro-ink);
+  writing-mode: vertical-rl; text-orientation: upright;
+  zoom: var(--pf-zoom, 1);
+}
+/* 编号横排，不跟随小传的竖排 */
+.euro-memo__child-no {
+  writing-mode: horizontal-tb; font-size: calc(7px * var(--pf-boost, 1)); color: var(--euro-ink);
+  zoom: var(--pf-zoom, 1);
+}
+.euro-person__no { font-size: calc(7px * var(--pf-boost, 1)); color: var(--euro-ink); zoom: var(--pf-zoom, 1); }
+/* 续页首列的承接标记 */
+.euro-carry {
+  position: absolute;
+  right: calc(2px * var(--pf-boost, 1)); bottom: calc(2px * var(--pf-boost, 1));
+  padding: 0 calc(2px * var(--pf-boost, 1)); background: var(--euro-paper);
+  font-size: calc(8px * var(--pf-boost, 1)); letter-spacing: .04em; color: var(--euro-ink);
+  zoom: var(--pf-zoom, 1);
+}
+/* 世次牌：右侧独立固定列，不参与左侧长卷滚动 */
+.euro-ruler {
+  display: flex; flex: 0 0 var(--euro-ruler-w); flex-direction: column; align-items: center;
+  justify-content: space-around; gap: 8px; padding: 8px 0;
+  background: var(--euro-paper);
+  border-left: var(--euro-line-thin) solid var(--euro-ink);
+}
+.euro-ruler__tag {
+  padding: 8px 3px; border-radius: 9px; background: var(--euro-ink); color: #fff;
+  font-size: 11px; letter-spacing: .16em; writing-mode: vertical-rl; text-orientation: upright;
+}
+.euro-branch {
+  display: flex; flex: 0 0 var(--euro-branch-w); align-items: center; justify-content: center;
+  border-left: var(--euro-line-thin) solid var(--euro-ink);
+  font-family: var(--euro-serif); font-size: 13px; letter-spacing: .28em;
+  writing-mode: vertical-rl; text-orientation: upright;
+}
+.euro-spine {
+  display: flex; flex: 0 0 var(--euro-spine-w); flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; padding: 0 6px; font-family: var(--euro-serif);
+}
+.euro-spine b, .euro-spine i, .euro-spine span { writing-mode: vertical-rl; text-orientation: upright; }
+.euro-spine b { font-size: 20px; letter-spacing: .2em; }
+.euro-spine i {
+  padding: 8px 4px; background: var(--euro-ink); color: #fff;
+  font-style: normal; font-size: 12px; letter-spacing: .2em;
+}
+.euro-spine span { font-size: 9px; letter-spacing: .1em; }
+
+/* ── ③ component：手机流式预览 ─────────────────────────────────────────── */
+.print-mobile-wrap { display: none; }
+.print-mobile { max-width: 640px; margin: 0 auto; padding: 16px 18px 40px; }
+.print-mobile-tip {
+  margin-bottom: 18px; padding: 10px 12px;
+  background: #e8eee9; border: var(--euro-line-thin) solid #cfd9cf;
+  font-size: 11.5px; line-height: 1.8; letter-spacing: .04em; color: #3c5245;
+}
+.print-mobile h2 { margin-bottom: 14px; }
+.print-mobile-gen { margin-bottom: 18px; }
+.print-mobile-gen h3 {
+  margin-bottom: 8px; padding-bottom: 6px; border-bottom: var(--euro-line-thin) solid #ded7c6;
+  font-size: 12px; letter-spacing: .16em; color: #8f7134;
+}
+.print-mobile-gen ul { margin: 0; padding: 0; list-style: none; }
+.print-mobile-gen li { padding: 6px 0; border-bottom: var(--euro-line-thin) dashed #e2ddd2; }
+.print-mobile-gen li b { margin-right: 10px; font-family: var(--euro-serif); font-size: 14px; }
+.print-mobile-gen li span { font-size: 10.5px; line-height: 1.7; color: #5b6a70; }
+.print-mobile-legend { margin-top: 20px; font-size: 11px; line-height: 1.8; color: #5b6a70; }
+
+/* ── ④ state ───────────────────────────────────────────────────────────── */
+.u-no-print { /* 屏幕无效果，仅打印隐藏 */ }
+
+/* ── ⑤ media：屏幕断点 ─────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .euro-spread__pair { flex-direction: column; }
+  .euro-page--right { order: 1; }
+  .euro-page--left { order: 3; }
+  .euro-spine { display: none; }
+  .su-frame__title, .su-frame__imprint { display: none; }
+  .euro-page { margin: 0 0 14px; }
+}
+@media (max-width: 639px) {
+  .print-body, .print-legend { display: none; }
+  .print-mobile-wrap { display: block; }
+  .print-toolbar-inner { padding: 10px 14px; }
+  .print-toolbar-hint { display: none; }
+}
+
+/* ── ⑤ media：打印 A4 竖排（默认） ─────────────────────────────────────── */
+@media print {
+  body, html.dark body { background: #fff; }
+  .u-no-print, .print-toolbar, .print-mobile-wrap { display: none; }
+  .print-page { min-height: 0; padding: 0; background: #fff; }
+  .print-legend { margin: 0 0 4mm; padding: 0; font-size: 9px; color: #333; }
+  .print-body { margin: 0; padding: 0; overflow: visible; }
+  .print-sheet:not(.euro-page) {
+    width: 100%; max-width: none; margin: 0; padding: 0;
+    background: #fff; border: 0; outline: 0;
+    break-after: page; page-break-after: always;
+  }
+  .print-sheet:last-child { break-after: auto; page-break-after: auto; }
+  .print-sheet-head { padding: 0 0 3mm; }
+  .print-sheet-foot { margin-top: 3mm; }
+  .combo-frame__bio, .print-tree-body { height: auto; overflow: visible; }
+  /* 纸宽由 @page 决定，屏显保底宽必须归零，否则会撑出纸面 */
+  .print-sheet--combo { min-width: 0; }
+  /* 对开按 A3 横排出页：版框撑到纸高，图在框内垂直居中 */
+  .combo-frame { min-height: 195mm; }
+  .print-tree > .print-tree-body > div { height: auto; overflow: visible; }
+  .print-flow-stage { width: var(--flow-w); height: var(--flow-h); zoom: var(--flow-scale); }
+  /* ReactFlow 把 transform 写在内联 style 上，这里必须覆盖 */
+  .print-flow-sheet .react-flow__viewport { transform: none !important; }
+
+  /* 垂丝谱装帧：整框按 flow-scale 收进一页（画布自身不再重复缩放）；
+     打印时画布视口变换已中和，标尺改用布局坐标对齐各世行心 */
+  .su-frame {
+    width: max-content; zoom: var(--flow-scale);
+    margin-top: calc(10px * var(--pf-boost, 1));
+    border-width: calc(var(--euro-line-thin) * var(--pf-boost, 1));
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  /* 画布坐标已按 --pf-boost 放大，装帧三栏同比放大后由整框 zoom 一并收回，
+     成品比例与设计稿一致；标尺标签在框内已是放大坐标，不再二次 zoom */
+  .su-frame__title { flex-basis: calc(64px * var(--pf-boost, 1)); border-right-width: calc(var(--euro-line-thin) * var(--pf-boost, 1)); }
+  .su-frame__title span { font-size: calc(27px * var(--pf-boost, 1)); }
+  .su-frame__ruler { flex-basis: calc(30px * var(--pf-boost, 1)); margin-right: calc(18px * var(--pf-boost, 1)); }
+  .su-frame__imprint {
+    flex-basis: calc(40px * var(--pf-boost, 1)); gap: calc(26px * var(--pf-boost, 1));
+    border-left-width: calc(var(--euro-line-thin) * var(--pf-boost, 1));
+  }
+  .su-frame__imprint span { font-size: calc(12px * var(--pf-boost, 1)); }
+  .su-frame .print-flow-stage { zoom: 1; }
+  .su-frame__ruler > span { top: var(--ruler-top-print); zoom: 1; }
+
+  .euro-scroll { zoom: var(--print-zoom, 1); overflow: visible; }
+  .euro-chart { break-inside: avoid; page-break-inside: avoid; }
+  .euro-band { break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* ── ⑤ media：A3 横排切换已并入长卷方案，此分支废弃 ───────────────────── */

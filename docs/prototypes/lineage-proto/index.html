@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>清溪沈氏 · 世系图版式原型</title>
+<style>
+  :root{
+    --paper:#f6f3ec; --ink:#1f2a33; --muted:#6f7a85; --line:#d8d1c4;
+    --accent:#8a2b22;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Songti SC","SimSun","Noto Serif CJK SC",serif;
+  }
+  .page{max-width:960px; margin:0 auto; padding:56px 24px 72px}
+  .kicker{
+    font-family:-apple-system,"PingFang SC",sans-serif;
+    font-size:11px; letter-spacing:.32em; color:var(--muted); text-transform:uppercase;
+  }
+  h1{
+    margin:10px 0 6px; font-size:30px; line-height:1.35; letter-spacing:.08em; font-weight:600;
+  }
+  .lede{
+    margin:0 0 26px; font-size:13px; line-height:1.9; color:#4a545c; max-width:46em;
+  }
+  .meta{
+    display:flex; flex-wrap:wrap; gap:8px 22px; padding:12px 0 20px;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    font-family:-apple-system,"PingFang SC",sans-serif; font-size:12px; color:var(--muted);
+  }
+  .meta b{color:var(--ink); font-weight:500}
+  .list{margin-top:26px; display:grid; gap:0}
+  .item{
+    display:flex; gap:18px; align-items:flex-start;
+    padding:20px 4px; border-bottom:1px solid var(--line);
+    text-decoration:none; color:inherit; transition:background .15s ease;
+  }
+  .item:hover{background:#efeade}
+  .no{
+    flex:0 0 46px; font-family:-apple-system,"PingFang SC",sans-serif;
+    font-size:11px; letter-spacing:.16em; color:var(--accent); padding-top:3px;
+  }
+  .body{min-width:0; flex:1}
+  .name{font-size:17px; letter-spacing:.06em; font-weight:600}
+  .name em{
+    font-style:normal; font-size:11px; letter-spacing:.12em; color:var(--muted);
+    margin-left:10px; font-weight:400; font-family:-apple-system,"PingFang SC",sans-serif;
+  }
+  .desc{margin:6px 0 0; font-size:12.5px; line-height:1.85; color:#4a545c}
+  .go{
+    flex:0 0 auto; align-self:center; font-family:-apple-system,"PingFang SC",sans-serif;
+    font-size:11.5px; letter-spacing:.1em; color:var(--accent);
+  }
+  .note{
+    margin-top:30px; padding:16px 18px; background:#efeade; border-left:2px solid var(--accent);
+    font-family:-apple-system,"PingFang SC",sans-serif; font-size:11.5px; line-height:1.9; color:#4a545c;
+  }
+  @media (max-width:600px){
+    .page{padding:34px 16px 48px}
+    h1{font-size:23px}
+    .lede{font-size:12.5px}
+    .item{gap:12px; padding:16px 2px}
+    .no{flex-basis:34px; font-size:10px}
+    .name{font-size:15.5px}
+    .name em{display:block; margin:4px 0 0}
+    .go{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="kicker">prototype</div>
+  <h1>清溪沈氏 · 世系图五种版式</h1>
+  <p class="lede">
+    按你提供的五张参考图，用同一套虚构数据各做一版静态页面，只用于看版式效果。
+    五种版式的数据、世次、房支完全一致，差别只在呈现方式。
+  </p>
+
+  <div class="meta">
+    <span>族人 <b>40</b> 位（血脉）</span>
+    <span>世次 <b>7</b> 世</span>
+    <span>房支 <b>长房 / 二房</b></span>
+    <span>实载族人 <b>16</b> 人 · 占位 <b>24</b> 人</span>
+  </div>
+
+  <div class="list">
+    <a class="item" href="./01-tree.html">
+      <div class="no">图 01</div>
+      <div class="body">
+        <div class="name">族谱树 <em>缩进 + 展开 + 详细 + 世代</em></div>
+        <p class="desc">
+          圆角节点内带 ⊕ 展开按钮，右侧「详细」入口与「沈氏第 N 世代」标注；
+          左侧引导线逐级缩进，可点 ⊕ 收起分支。最接近常规后台管理式的树形列表。
+        </p>
+      </div>
+      <div class="go">打开 →</div>
+    </a>
+
+    <a class="item" href="./02-euro.html">
+      <div class="no">图 02</div>
+      <div class="body">
+        <div class="name">欧式谱表 <em>竖排小传 · 右起世代列</em></div>
+        <p class="desc">
+          每世一列，文字竖排、列序自右向左；一人一段小传（配某氏、生卒、生子某某），
+          右侧单独一列标「世代」。谱书印刷的排版方式，信息密度最高。
+        </p>
+      </div>
+      <div class="go">打开 →</div>
+    </a>
+
+    <a class="item" href="./03-ztree.html">
+      <div class="no">图 03</div>
+      <div class="body">
+        <div class="name">ztree 树 <em>逐级缩进 · 小图标</em></div>
+        <p class="desc">
+          蓝色人形图标加姓名，只用细引导线表达层级，无卡片、无附加信息。
+          行高压到 22px，同样的宽度能看到更多人。
+        </p>
+      </div>
+      <div class="go">打开 →</div>
+    </a>
+
+    <a class="item" href="./04-su.html">
+      <div class="no">图 04</div>
+      <div class="body">
+        <div class="name">苏式吊线 <em>世代横排 · 父子吊线</em></div>
+        <p class="desc">
+          世代自上而下，同辈兄弟横向并排，父居中于子、细线吊连；
+          外框双线，左右竖排谱名与纪年，页面随宽度整体缩放。
+        </p>
+      </div>
+      <div class="go">打开 →</div>
+    </a>
+
+    <a class="item" href="./05-combo.html">
+      <div class="no">图 05</div>
+      <div class="body">
+        <div class="name">欧苏结合 <em>左小传 · 中缝书名 · 右吊线</em></div>
+        <p class="desc">
+          左侧竖排小传、中间竖排谱名、右侧吊线图，同一批族人两种读法并存。
+          适合既有家族关系、又保留个人小传内容的场景。
+        </p>
+      </div>
+      <div class="go">打开 →</div>
+    </a>
+  </div>
+
+  <div class="note">
+    数据说明：全部人物、生卒与地名均为虚构，与任何真实宗族无关；第 1–5 世为本支族人（长房与二房两支）；
+    第 6–7 世以及部分第 5 世成员为按房支补足的占位族人，字辈依「承—启—允—昭—毓—绍—世」延续，
+    仅用于观察版面密度。原型为纯静态页面，未改动项目代码。
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>欧苏谱两种版面 · 对比原型</title>
+<link rel="stylesheet" href="./proto.css">
+<style>
+  body { padding: 0; }
+  .page { max-width: 900px; margin: 0 auto; padding: 56px 24px 72px; }
+  .kicker { font-size: 12px; letter-spacing: .28em; color: #8a8578; }
+  h1 { margin: 10px 0 8px; font-size: 28px; line-height: 1.4; letter-spacing: .06em; font-weight: 600; }
+  .lede { margin: 0 0 28px; font-size: 13px; line-height: 2; color: #4a453d; max-width: 40em; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .card {
+    display: block; padding: 18px 18px 16px; text-decoration: none; color: inherit;
+    background: #fff; border: 1px solid #1c1c1c; outline: 2px solid #1c1c1c; outline-offset: 2px;
+    transition: background .15s ease;
+  }
+  .card:hover { background: #fbf8f1; }
+  .card em { font-style: normal; font-size: 12px; letter-spacing: .16em; color: #8f7134; }
+  .card h2 { margin: 6px 0 8px; font-size: 19px; letter-spacing: .06em; font-weight: 600; }
+  .card p { margin: 0; font-size: 12.5px; line-height: 1.95; color: #4a453d; }
+  .card .go { display: inline-block; margin-top: 12px; font-size: 12px; letter-spacing: .1em; color: #12303b; border-bottom: 1px solid #12303b; }
+  table { width: 100%; margin-top: 30px; border-collapse: collapse; font-size: 12.5px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #ded7c6; }
+  th { font-weight: 600; color: #12303b; letter-spacing: .08em; }
+  td:first-child { width: 7.5em; color: #6b6257; }
+  .note {
+    margin-top: 26px; padding: 14px 16px; background: #efeade; border-left: 2px solid #8f7134;
+    font-size: 12.5px; line-height: 2; color: #4a453d;
+  }
+  .note b { font-weight: 600; }
+  @media (max-width: 720px) {
+    .page { padding: 52px 16px 56px; }
+    h1 { font-size: 22px; }
+    .cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="kicker">谱页版式原型</div>
+  <h1>欧苏谱 · 三种版面</h1>
+  <p class="lede">
+    同一份沈氏谱数据、同一套纸色与装帧，只把「世系图」和「行传」的位置换一换。三页都是纯静态、按纸面取值排的：A 单页图传同面，B 对开带书脊，B2 是 B 的分页版。
+  </p>
+
+  <div class="cards">
+    <a class="card" href="./a.html">
+      <em>方案 A</em>
+      <h2>上图下传</h2>
+      <p>整幅吊线图在上，行传在下按世次横向三栏续排。图占满纸宽，一世之内兄弟多少一眼看清；行传横排，读起来是现代的阅读方向。</p>
+      <span class="go">看 A 版 →</span>
+    </a>
+    <a class="card" href="./b.html">
+      <em>方案 B</em>
+      <h2>右图左传</h2>
+      <p>竖排行传在左、书脊居中、吊线图在右，右起翻读。行传竖排更接近线装谱书；代价是图只占右半幅，一页所容世次少于 A。</p>
+      <span class="go">看 B 版 →</span>
+    </a>
+    <a class="card" href="./b2.html" style="grid-column: 1 / -1;">
+      <em>方案 B2 · B 的分页版</em>
+      <h2>图传分页</h2>
+      <p>卷首单独一页通栏吊线图，次页满幅竖排行传。图不再被行传挤到半幅，所以能容四世 35 人，行传也从一人 34px 放到满纸 35 栏——B 被右半幅图拖住的两个毛病一起消失。这是线装谱的常规排法：图在卷首，传在后面。</p>
+      <span class="go">看 B2 版 →</span>
+    </a>
+  </div>
+
+  <table>
+    <tr><th>对比项</th><th>方案 A</th><th>方案 B</th><th>方案 B2</th></tr>
+    <tr><td>纸面</td><td>单页，宽 1240</td><td>对开，宽 1600（含书脊）</td><td>单页两张：一页图、一页传</td></tr>
+    <tr><td>取样</td><td>世次四至七，35 人</td><td>世次四至六，19 人</td><td>世次四至七，35 人</td></tr>
+    <tr><td>图幅</td><td>通栏约 1100px</td><td>右半幅约 800px</td><td>通栏约 1180px，独占一页</td></tr>
+    <tr><td>行传</td><td>横排三栏，一栏约 380px</td><td>竖排一人一栏，一栏 34px</td><td>竖排一人一栏，一栏 32px，满幅</td></tr>
+    <tr><td>外衍</td><td>图中浅色画出，行传浅色</td><td>不入图，只入行传</td><td>不入图，只入行传</td></tr>
+  </table>
+
+  <div class="note">
+    <b>取样为什么不一样：</b>三版的图是同一套画法，差别只在可用宽度。A、B2 都是通栏，能放下四世 35 人；
+    B 的图只剩右半幅，同宽下会缩到字看不清，所以取三世 19 人做满一页。这正是 B 同面排图传的代价，
+    B2 用「图传分页」把它换掉了：图不再被挤，行传也不再被图压。
+  </div>
+</div>
+</body>
+</html>

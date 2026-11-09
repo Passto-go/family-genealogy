@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图1 · 族谱树（左右值缩进）</title>
+<style>
+  :root{
+    --ink:#22303f; --line:#8299ab; --accent:#1a5fb4; --gen:#b3261e;
+    --node-bd:#c9d6e2; --node-bg:#fff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fff; color:var(--ink);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  .topbar{
+    display:flex; align-items:baseline; gap:14px;
+    padding:14px 22px 10px; border-bottom:1px solid #e6eaef;
+  }
+  .topbar b{font-size:15px; letter-spacing:.04em}
+  .topbar span{font-size:12px; color:#7a8899}
+  .topbar a{margin-left:auto; font-size:12px; color:#1a5fb4; text-decoration:none}
+  .tree{padding:18px 22px 60px; min-width:max-content}
+  .row{display:flex; align-items:flex-start; min-height:30px}
+  .guides{position:relative; flex:0 0 auto; align-self:stretch}
+  .guides i{position:absolute; top:0; display:block; font-style:normal}
+  .guides i.v{height:100%; border-left:1px solid var(--line)}
+  .guides i.half{height:15px; border-left:1px solid var(--line)}
+  .guides i.down{top:15px; height:15px; border-left:1px solid var(--line)}
+  .guides i.elbow{top:15px; height:0; border-top:1px solid var(--line)}
+  .node-wrap{display:flex; align-items:center; gap:0; padding:2px 0}
+  .node{
+    display:inline-flex; align-items:center; gap:5px;
+    border:1px solid var(--node-bd); border-radius:5px; background:var(--node-bg);
+    padding:1px 8px 1px 6px; min-height:23px;
+  }
+  .toggle{
+    width:15px; height:15px; line-height:13px; padding:0; flex:0 0 auto;
+    border:0; border-radius:50%; background:#1a3a5c; color:#fff;
+    font-size:12px; text-align:center; cursor:pointer; cursor:pointer;
+    font-family:Arial,sans-serif;
+  }
+  .toggle.leaf{background:#8fa3b5; cursor:default}
+  .name{font-size:13.5px; letter-spacing:.02em; white-space:nowrap}
+  .detail{
+    margin-left:12px; font-size:12px; color:var(--accent);
+    text-decoration:none; cursor:pointer; white-space:nowrap;
+  }
+  .gen{margin-left:9px; font-size:12px; color:var(--gen); white-space:nowrap}
+  .gen.alt{color:#1a5fb4}
+  .foot{
+    margin:10px 22px 26px; font-size:11.5px; color:#8b97a4; line-height:1.7;
+  }
+  @media (max-width:620px){
+    .topbar{flex-wrap:wrap; gap:6px 12px; padding:12px 14px}
+    .tree{padding:12px 14px 40px}
+    .guide{width:20px}
+    .guide i{left:9px}
+    .guide i.elbow{left:9px; width:11px}
+    .node{padding:1px 6px}
+    .name{font-size:12.5px}
+    .detail,.gen{margin-left:8px; font-size:11px}
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <b>清溪沈氏 · 族谱树</b>
+    <span>版式一：左右值缩进树（参照图 1）</span>
+    <a href="./index.html">← 返回五种版式</a>
+  </div>
+
+  <div class="tree" id="tree"></div>
+  <p class="foot" id="note"></p>
+
+<script src="./data.js"></script>
+<script>
+(function () {
+  var U = window.LINEAGE_UTIL, L = window.LINEAGE;
+  var tree = document.getElementById("tree");
+  var collapsed = {};   // id -> true 收起
+
+  var STEP = 26;
+
+  function makeGuides(depth, flags, isLast) {
+    // 每层 26px：祖先层按 flags 画通高竖线；本层按「是否末子」画通高或半高，再横连到节点
+    var wrap = document.createElement("span");
+    wrap.className = "guides";
+    wrap.style.width = depth * STEP + "px";
+    for (var i = 0; i < depth - 1; i++) {
+      if (!flags[i]) continue;
+      var v = document.createElement("i");
+      v.className = "v";
+      v.style.left = i * STEP + STEP / 2 - 0.5 + "px";
+      wrap.appendChild(v);
+    }
+    if (depth > 0) {
+      var x = (depth - 1) * STEP + STEP / 2 - 0.5;
+      var stem = document.createElement("i");
+      stem.className = isLast ? "half" : "v";
+      stem.style.left = x + "px";
+      wrap.appendChild(stem);
+      var arm = document.createElement("i");
+      arm.className = "elbow";
+      arm.style.left = x + "px";
+      arm.style.width = STEP / 2 + "px";
+      wrap.appendChild(arm);
+    }
+    return wrap;
+  }
+
+  function renderNode(person, depth, flags, isLast) {
+    var kids = U.children(person.id);
+    var isCollapsed = !!collapsed[person.id];
+
+    var row = document.createElement("div");
+    row.className = "row";
+    var guidesEl = makeGuides(depth, flags, isLast);
+    row.appendChild(guidesEl);
+
+    var wrap = document.createElement("div");
+    wrap.className = "node-wrap";
+
+    var node = document.createElement("span");
+    node.className = "node";
+
+    var btn = document.createElement("button");
+    btn.className = "toggle" + (kids.length ? "" : " leaf");
+    btn.textContent = kids.length ? (isCollapsed ? "＋" : "－") : "·";
+    btn.title = kids.length ? (isCollapsed ? "展开" : "收起") : "无嗣";
+    if (kids.length) {
+      btn.onclick = function () {
+        collapsed[person.id] = !collapsed[person.id];
+        draw();
+      };
+    }
+    node.appendChild(btn);
+
+    var nm = document.createElement("span");
+    nm.className = "name";
+    nm.textContent = person.n;
+    node.appendChild(nm);
+    wrap.appendChild(node);
+
+    var det = document.createElement("span");
+    det.className = "detail";
+    det.textContent = "详细";
+    det.title = "原型未接详情页";
+    wrap.appendChild(det);
+
+    var gen = document.createElement("span");
+    gen.className = "gen" + (person.g % 2 === 0 ? " alt" : "");
+    gen.textContent = (window.LINEAGE.surname || "") + "氏第" + person.g + "世代" + (person.ph ? "（占位）" : "");
+    wrap.appendChild(gen);
+
+    row.appendChild(wrap);
+    tree.appendChild(row);
+
+    if (kids.length && !isCollapsed) {
+      // 父行下半段：让父节点中心到行底的竖线与子行接通
+      var down = document.createElement("i");
+      down.className = "down";
+      down.style.left = depth * STEP + STEP / 2 - 0.5 + "px";
+      guidesEl.appendChild(down);
+
+      kids.forEach(function (k, idx) {
+        var last = idx === kids.length - 1;
+        renderNode(k, depth + 1, flags.concat([!isLast]), last);
+      });
+    }
+  }
+
+  function draw() {
+    tree.innerHTML = "";
+    var roots = U.roots();
+    roots.forEach(function (r, i) {
+      renderNode(r, 0, [], i === roots.length - 1);
+    });
+    document.getElementById("note").textContent = L.note + "。右侧「详细」为参考图中的详情入口占位。";
+  }
+
+  draw();
+})();
+</script>
+</body>
+</html>

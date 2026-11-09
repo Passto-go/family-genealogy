@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图2 · 欧式谱表（竖排）</title>
+<style>
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#f4f1ea; color:#1c1c1c;
+    font-family:"Songti SC","SimSun","Noto Serif CJK SC",serif;
+  }
+  .topbar{
+    display:flex; align-items:baseline; gap:14px;
+    padding:14px 22px 10px; border-bottom:1px solid #e2ddd2;
+    font-family:-apple-system,"PingFang SC",sans-serif; font-size:14px;
+  }
+  .topbar b{font-size:15px; letter-spacing:.04em}
+  .topbar span{font-size:12px; color:#7a746a}
+  .topbar a{margin-left:auto; font-size:12px; color:#1a5fb4; text-decoration:none}
+
+  .wrap{padding:24px 22px 50px; overflow-x:auto}
+  .sheet{
+    display:flex; flex-direction:row-reverse; align-items:stretch;
+    width:max-content; margin:0 auto; background:#fff;
+    border:1px solid #1c1c1c; outline:3px solid #1c1c1c; outline-offset:4px;
+  }
+  .col{
+    writing-mode:vertical-rl; text-orientation:upright;
+    flex:0 0 auto; height:500px; padding:12px 5px 10px;
+    border-left:1px solid #2a2a2a; position:relative;
+  }
+  .col:first-child{border-left:0}
+  .col.gen{
+    width:48px; flex:0 0 48px;
+    writing-mode:vertical-rl; text-orientation:upright;
+    display:flex; align-items:center; justify-content:center;
+    letter-spacing:.5em; font-size:15px; color:#333;
+  }
+  .col.gen b{font-size:19px; letter-spacing:.55em; font-weight:600}
+  .person{display:inline-block; height:100%; vertical-align:top; margin-left:4px}
+  .person:first-child{margin-left:0}
+  .pn{font-size:13px; line-height:1; font-weight:600; letter-spacing:.08em; margin-left:2px}
+  .pn.ph{color:#a8a29a; font-weight:400}
+  .pm{font-size:7.5px; line-height:1.4; letter-spacing:.06em; color:#3a3a3a}
+  .sec{
+    position:absolute; left:6px; bottom:6px;
+    writing-mode:horizontal-tb; font-size:10px; letter-spacing:.2em; color:#9a948a;
+  }
+  .ear{
+    position:absolute; right:-34px; top:26px;
+    writing-mode:vertical-rl; text-orientation:upright;
+    font-size:13px; letter-spacing:.4em; color:#1c1c1c;
+  }
+  .foot{
+    max-width:1180px; margin:0 auto; padding:0 22px 30px;
+    font-family:-apple-system,"PingFang SC",sans-serif; font-size:11.5px; color:#8b8478; line-height:1.7;
+  }
+  @media (max-width:720px){
+    .topbar{flex-wrap:wrap; gap:6px 12px; padding:12px 14px}
+    .wrap{padding:14px 10px 36px}
+    .col{height:760px; padding:10px 6px}
+    .pn{font-size:18px}
+    .pm{font-size:10px; line-height:1.8}
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <b>清溪沈氏 · 欧式谱表</b>
+    <span>版式二：竖排小传、右起世代列（参照图 2）</span>
+    <a href="./index.html">← 返回五种版式</a>
+  </div>
+
+  <div class="wrap"><div class="sheet" id="sheet"></div></div>
+  <p class="foot" id="note"></p>
+
+<script src="./data.js"></script>
+<script>
+(function () {
+  var U = window.LINEAGE_UTIL, L = window.LINEAGE;
+  var sheet = document.getElementById("sheet");
+  var CN_DIGIT = ["〇","一","二","三","四","五","六","七","八","九"];
+
+  function cnYear(s) {
+    if (!s) return "";
+    return String(s).replace(/\d/g, function (d) { return CN_DIGIT[+d]; });
+  }
+  function years(p) {
+    if (!p.b && !p.d) return "生卒未详";
+    return cnYear(p.b || "？") + "—" + cnYear(p.d || "今");
+  }
+
+  function memo(p) {
+    var kids = U.children(p.id);
+    var parts = [];
+    if (p.s) parts.push("配" + p.s);
+    parts.push(years(p));
+    if (kids.length) {
+      parts.push("生子" + kids.map(function (k) { return U.short(k.n); }).join("、"));
+    } else {
+      parts.push("无嗣");
+    }
+    return parts.join("，") + "。";
+  }
+
+  var maxG = 0;
+  L.people.forEach(function (p) { if (p.g > maxG) maxG = p.g; });
+
+  // 世代索引列（最右）
+  var gen = document.createElement("div");
+  gen.className = "col gen";
+  gen.innerHTML = "<b>世代</b>";
+  sheet.appendChild(gen);
+
+  for (var g = 1; g <= maxG; g++) {
+    var col = document.createElement("div");
+    col.className = "col";
+
+    var list = L.people.filter(function (p) { return p.g === g; });
+    // 每人固定 26px：列宽按人数算，宁可整表横向滚动，也不让竖排文字相互压叠
+    col.style.width = list.length * 30 + 10 + "px";
+    list.forEach(function (p) {
+      var box = document.createElement("div");
+      box.className = "person";
+
+      var nm = document.createElement("span");
+      nm.className = "pn" + (p.ph ? " ph" : "");
+      nm.textContent = U.short(p.n);
+      box.appendChild(nm);
+
+      var mm = document.createElement("span");
+      mm.className = "pm";
+      mm.textContent = memo(p);
+      box.appendChild(mm);
+
+      col.appendChild(box);
+    });
+
+    var sec = document.createElement("span");
+    sec.className = "sec";
+    sec.textContent = "第" + g + "世";
+    col.appendChild(sec);
+
+    sheet.appendChild(col);
+  }
+
+  document.getElementById("note").textContent =
+    L.note + "。文字为竖排，列序自右向左；浅色姓名为占位族人。";
+})();
+</script>
+</body>
+</html>

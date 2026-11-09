@@ -1,0 +1,32 @@
+node_modules/
+dist/
+server/data/*
+!server/data/.gitkeep
+.DS_Store
+*.log
+
+# 环境变量与密钥（绝不入库）
+.env
+.env.*
+!.env.example
+
+# 数据库与备份
+*.db
+*.db-*
+*.bak
+
+# 本地会话密钥（node-entry 自动生成，绝不入库）
+server/data/.session-secret
+
+# 本地临时文件
+*.local
+
+# Workbench CLI（本地运维工具，不入库）
+.workbench-bin/
+.workbench-install.sh
+
+# 编辑器/助手本地配置，不入库
+.codebuddy/
+
+# 只读演示站构建产物
+dist-demo/

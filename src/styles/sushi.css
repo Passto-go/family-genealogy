@@ -1,0 +1,66 @@
+/* ==========================================================================
+   苏式谱页样式（/t/:slug/print?v=su-shi）
+   只服务 SuShiSheet 组件；不改动 print.css 里的任何 .euro-* 规则。
+   纸色、字号 token 复用 print.css 的 --euro-*，仅取用不覆盖。
+   ========================================================================== */
+
+.sushi-sheet {
+  /* 纸色统一取 print.css 的 --euro-paper，与欧式谱、欧苏谱、卡片谱、树形谱、垂丝谱同一底 */
+  background: var(--euro-paper);
+  border: 2px solid #1c1c1c;
+  padding: 16px 18px 12px;
+}
+.sushi-head {
+  text-align: center;
+  border-bottom: 1.5px solid #1c1c1c;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+.sushi-title {
+  display: inline-block;
+  padding: 4px 6px;
+  border-left: 3px solid #1c1c1c;
+  border-right: 3px solid #1c1c1c;
+  font-family: var(--euro-serif, "Songti SC", serif);
+  font-size: 20px;
+  letter-spacing: 0.16em;
+  color: #1c1c1c;
+}
+.sushi-sub {
+  margin-top: 3px;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: #4a453d;
+}
+
+/* 左侧长卷独立横向滚动，右侧世次牌紧贴并固定不随滚动；纵向随页面滚动。
+   画布自身按 --sushi-fit 收进容器宽度（配偶、子嗣栏不再被右缘切掉），
+   世次牌不跟着缩，高度与圆牌位置由组件按同一比例算好。 */
+.sushi-body { display: flex; align-items: stretch; justify-content: center; min-width: 0; }
+.sushi-canvas { zoom: var(--sushi-fit, 1); }
+.sushi-scroll { flex: 0 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; padding-bottom: 6px; }
+.sushi-canvas { margin: 0; }
+
+/* 世次牌：沿用欧式圆牌（.euro-ruler__tag），纵向按各世行心定位 */
+.sushi-ruler {
+  position: relative; flex: 0 0 var(--euro-ruler-w);
+  border-left: var(--euro-line-thin) solid var(--euro-ink);
+  background: var(--euro-paper);
+}
+.sushi-ruler__tag { position: absolute; left: 50%; transform: translate(-50%, -50%); }
+
+.sushi-foot {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #1c1c1c;
+  padding-top: 6px;
+  margin-top: 12px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: #4a453d;
+}
+
+@media print {
+  /* 打印不做版式适配：纸张与缩放交给浏览器打印对话框，这里只解除滚动裁剪 */
+  .sushi-scroll { overflow: visible; padding-bottom: 0; }
+}

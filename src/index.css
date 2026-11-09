@@ -1,0 +1,543 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 深青黛蓝 · 宣纸白 */
+    --background: 45 33% 98%;
+    --foreground: 196 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 196 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 196 25% 15%;
+    --primary: 196 53% 15%;
+    --primary-foreground: 45 33% 98%;
+    --secondary: 42 28% 93%;
+    --secondary-foreground: 196 25% 18%;
+    --muted: 42 28% 93%;
+    /* 可读性增强：在宣纸白上对比度由 ~4.9:1 提至 ~8:1（仍明显浅于主文字，保持层级） */
+    --muted-foreground: 195 15% 29%;
+    --accent: 43 36% 95%;
+    --accent-foreground: 196 30% 18%;
+    --destructive: 13 45% 41%;
+    --destructive-foreground: 45 33% 98%;
+    --border: 41 22% 86%;
+    --input: 41 22% 84%;
+    --ring: 196 30% 40%;
+    --radius: 0.125rem;
+
+    --sidebar-background: 45 33% 98%;
+    --sidebar-foreground: 196 20% 25%;
+    --sidebar-primary: 196 53% 15%;
+    --sidebar-primary-foreground: 45 33% 98%;
+    --sidebar-accent: 42 28% 93%;
+    --sidebar-accent-foreground: 196 30% 18%;
+    --sidebar-border: 41 22% 86%;
+    --sidebar-ring: 196 30% 40%;
+
+    /* 世系图节点字体族的唯一来源：所有 font-song 组件与 SVG 节点文字均引用它。
+       仅统一族谱节点的字体，站点界面文字仍沿用 body 的 font-sans，互不影响。 */
+    --node-font: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    /* 世系图所有节点姓名统一的字色（日间墨色） */
+    --node-ink: #12303B;
+
+    /* 世系图装饰色（日间）：连线、书脊框线、圆点、世代标注、画布点阵。
+       内联 style 无法用 dark: 变体，统一走变量，由下方 .dark 覆盖为暗色值。 */
+    --tree-line: #9aa6ad;
+    --tree-line-soft: #d2cfc8;
+    /* 宝塔吊线：中性浅灰 1px，与参考图的横贯细线一致 */
+    --baota-line: #dcdcdc;
+    --tree-guide: #8299ab;
+    --tree-dot: #d9d3c6;
+    --su-frame-line: #1c1c1c;
+    --dot-blood: #b3261e;
+    --dot-extended: #b9b3a8;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "kern" 1;
+  }
+
+  ::selection {
+    background-color: #12303b;
+    color: #fbfaf7;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d8d2c5;
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #bdb5a4;
+    background-clip: content-box;
+  }
+}
+
+@layer utilities {
+  /* 极淡宣纸质感，不使用图片资源 */
+  .paper-texture {
+    background-image:
+      radial-gradient(circle at 18% 22%, rgba(168, 134, 63, 0.045) 0%, transparent 42%),
+      radial-gradient(circle at 82% 12%, rgba(18, 48, 59, 0.035) 0%, transparent 38%),
+      radial-gradient(circle at 62% 88%, rgba(168, 134, 63, 0.035) 0%, transparent 45%);
+  }
+
+  .ink-texture {
+    background-image:
+      radial-gradient(circle at 15% 18%, rgba(255, 255, 255, 0.06) 0%, transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(168, 134, 63, 0.09) 0%, transparent 45%);
+  }
+
+  .hairline {
+    background-image: linear-gradient(to right, transparent, #e2ddd2, transparent);
+  }
+
+  .vertical-rl {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, rgba(18, 48, 59, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(18, 48, 59, 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
+/* React Flow 主题微调 */
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.react-flow__edge-path {
+  stroke: #b4c9d2;
+  stroke-width: 1.2;
+}
+
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #4c7f92;
+}
+
+.react-flow__controls {
+  box-shadow: 0 1px 2px rgba(12, 33, 41, 0.06), 0 8px 24px -12px rgba(12, 33, 41, 0.16);
+  border: 1px solid #e2ddd2;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: #fbfaf7;
+  border-bottom: 1px solid #e2ddd2;
+  color: #12303b;
+}
+
+.react-flow__controls-button:hover {
+  background: #f0f4f6;
+}
+
+.react-flow__minimap {
+  border: 1px solid #e2ddd2;
+  border-radius: 2px;
+  background: #fbfaf7;
+}
+
+/* 顶栏恒定深青底：显式兜底，确保日间/夜间模式均深底浅字，不受主题切换或背景透明度影响 */
+.site-header {
+  background-color: #12303b;
+}
+
+/* ── 自动深色模式（随系统 prefers-color-scheme 切换 <html>.dark）── */
+.dark {
+  --background: 197 30% 9%;
+  --foreground: 195 20% 86%;
+  --card: 197 32% 11%;
+  --card-foreground: 195 20% 86%;
+  --popover: 197 32% 11%;
+  --popover-foreground: 195 20% 86%;
+  --primary: 43 36% 82%;
+  --primary-foreground: 197 40% 10%;
+  --secondary: 197 25% 16%;
+  --secondary-foreground: 195 18% 82%;
+  --muted: 197 22% 15%;
+  --muted-foreground: 195 12% 62%;
+  --accent: 197 25% 16%;
+  --accent-foreground: 195 18% 82%;
+  --border: 197 22% 20%;
+  --input: 197 22% 20%;
+  --ring: 196 30% 50%;
+  /* 世系图所有节点姓名统一的字色（夜间提亮，保持与日间同一语义） */
+  --node-ink: #e7eef1;
+
+  /* 世系图装饰色（夜间）：深底上提亮连线与圆点，框线改深青而非纯黑 */
+  --tree-line: #3d6575;
+  --tree-line-soft: #3d6575;
+  --baota-line: #3d6575;
+  --tree-guide: #3f6373;
+  --tree-dot: #2c4a55;
+  --su-frame-line: #3a5b67;
+  --dot-blood: #e7958a;
+  --dot-extended: #6f858d;
+}
+
+.dark body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* 宣纸色面在暗色下转为深青底 */
+.dark .bg-paper-50 {
+  background-color: #0e2129;
+}
+.dark .bg-paper-100 {
+  background-color: #0b1a20;
+}
+.dark .bg-paper-200 {
+  background-color: #102733;
+}
+.dark .bg-paper-300 {
+  background-color: #16303a;
+}
+
+/* 描边与文字在暗色下提亮 */
+.dark .border-paper-200 {
+  border-color: #1c3742;
+}
+.dark .border-paper-300 {
+  border-color: #1f3b46;
+}
+.dark .text-ink-800 {
+  color: #e7eef1;
+}
+.dark .text-ink-700 {
+  color: #d2dde1;
+}
+.dark .text-ink-600 {
+  color: #9fb2ba;
+}
+.dark .text-ink-500 {
+  color: #8298a1;
+}
+.dark .text-ink-400 {
+  color: #6e838c;
+}
+.dark .text-muted-foreground {
+  color: #8aa0a8;
+}
+
+/* 滚动条与选中色在暗色下微调 */
+.dark ::-webkit-scrollbar-thumb {
+  background: #2a4751;
+}
+.dark ::selection {
+  background-color: #2f6377;
+  color: #eef4f6;
+}
+
+/* 暗色下常见硬编码浅色面的兜底（白底卡片、近黑文字、浅描边） */
+.dark .bg-white {
+  background-color: hsl(var(--card));
+}
+.dark .bg-white\/60 {
+  background-color: hsl(var(--card) / 0.6);
+}
+.dark .bg-white\/70 {
+  background-color: hsl(var(--card) / 0.7);
+}
+.dark .text-ink-900 {
+  color: #f1f5f7;
+}
+.dark .text-ink-300 {
+  color: #5f7680;
+}
+.dark .border-ink-300 {
+  border-color: #2c4a55;
+}
+.dark .border-paper-400 {
+  border-color: #23414c;
+}
+
+/* 带透明度的纸色面（半透面板、悬浮工具条、锁定遮罩、节点卡片）在暗色下转为深青半透，
+   避免浅底叠加深底背景导致浅色文字不可见 */
+.dark .bg-paper-50\/60 { background-color: rgb(14 33 41 / 0.6); }
+.dark .bg-paper-50\/70 { background-color: rgb(14 33 41 / 0.7); }
+.dark .bg-paper-50\/92 { background-color: rgb(14 33 41 / 0.92); }
+.dark .bg-paper-50\/95 { background-color: rgb(14 33 41 / 0.95); }
+.dark .bg-paper-100\/60 { background-color: rgb(11 26 32 / 0.6); }
+.dark .bg-paper-100\/70 { background-color: rgb(11 26 32 / 0.7); }
+.dark .bg-paper-100\/80 { background-color: rgb(11 26 32 / 0.8); }
+.dark .bg-paper-200\/70 { background-color: rgb(16 39 51 / 0.7); }
+
+/* 纸色 400 兜底（锁定虚线框等） */
+.dark .bg-paper-400 { background-color: #1c3742; }
+
+/* 金 / 朱强调底色在暗色下转为深青底上的暖色暗调，与整体暗色协调 */
+.dark .bg-gold-100 { background-color: #241f12; }
+.dark .bg-gold-200 { background-color: #2c2614; }
+.dark .bg-seal-100 { background-color: #2a1714; }
+
+/* 金 / 朱文字在暗色下提亮，确保深色背景与暗调面板上均清晰可读 */
+.dark .text-gold-700 { color: #e7d3a0; }
+.dark .text-gold-600 { color: #d9c08a; }
+.dark .text-seal-700 { color: #e7a99c; }
+.dark .text-seal-600 { color: #db9a8c; }
+
+/* 暗色下「带透明度修饰符」的文本令牌：基础色已在上方提亮，透明度变体需单独覆盖，
+   否则仍沿用浅色模式的深色值，导致「深字 + 深底」不可见（如 text-ink-700/90 正文）。
+   此处为各深色文本令牌补齐常用透明度变体，确保夜间模式全文本清晰可读。 */
+.dark .text-ink-900\/90, .dark .text-ink-900\/80, .dark .text-ink-900\/70, .dark .text-ink-900\/60, .dark .text-ink-900\/50 { color: #f1f5f7; }
+.dark .text-ink-800\/90, .dark .text-ink-800\/80, .dark .text-ink-800\/70, .dark .text-ink-800\/60, .dark .text-ink-800\/50 { color: #e7eef1; }
+.dark .text-ink-700\/90, .dark .text-ink-700\/80, .dark .text-ink-700\/70, .dark .text-ink-700\/60, .dark .text-ink-700\/50 { color: #d2dde1; }
+.dark .text-ink-600\/90, .dark .text-ink-600\/80, .dark .text-ink-600\/70, .dark .text-ink-600\/60, .dark .text-ink-600\/50 { color: #9fb2ba; }
+.dark .text-ink-500\/90, .dark .text-ink-500\/80, .dark .text-ink-500\/70, .dark .text-ink-500\/60, .dark .text-ink-500\/50 { color: #8298a1; }
+.dark .text-ink-400\/90, .dark .text-ink-400\/80, .dark .text-ink-400\/70, .dark .text-ink-400\/60, .dark .text-ink-400\/50 { color: #6e838c; }
+.dark .text-ink-300\/90, .dark .text-ink-300\/80, .dark .text-ink-300\/70, .dark .text-ink-300\/60, .dark .text-ink-300\/50 { color: #5f7680; }
+.dark .text-gold-700\/90, .dark .text-gold-700\/80, .dark .text-gold-700\/70, .dark .text-gold-700\/60, .dark .text-gold-700\/50 { color: #e7d3a0; }
+.dark .text-gold-600\/90, .dark .text-gold-600\/80, .dark .text-gold-600\/70, .dark .text-gold-600\/60, .dark .text-gold-600\/50 { color: #d9c08a; }
+.dark .text-seal-700\/90, .dark .text-seal-700\/80, .dark .text-seal-700\/70, .dark .text-seal-700\/60, .dark .text-seal-700\/50 { color: #e7a99c; }
+.dark .text-seal-600\/90, .dark .text-seal-600\/80, .dark .text-seal-600\/70, .dark .text-seal-600\/60, .dark .text-seal-600\/50 { color: #db9a8c; }
+
+/* 浅色 ink 底（后台页签激活、主题下拉、树节点徽标）在暗色下转深 */
+.dark .bg-ink-50 { background-color: #16303a; }
+.dark .bg-ink-100 { background-color: #102733; }
+
+/* 悬停态浅色底在暗色下同步转深（hover: 变体类名不同，需单独覆盖） */
+.dark .hover\:bg-paper-50:hover { background-color: #0e2129; }
+.dark .hover\:bg-paper-100:hover { background-color: #0b1a20; }
+.dark .hover\:bg-paper-200:hover { background-color: #102733; }
+.dark .hover\:bg-paper-100\/60:hover { background-color: rgb(11 26 32 / 0.6); }
+.dark .hover\:bg-paper-200\/70:hover { background-color: rgb(16 39 51 / 0.7); }
+.dark .hover\:bg-seal-100:hover { background-color: #2a1714; }
+
+/* React Flow 画布与控件暗色适配 */
+.dark .react-flow {
+  background: transparent;
+}
+.dark .react-flow__edge-path {
+  stroke: #2c4a55;
+}
+.dark .react-flow__controls {
+  box-shadow: 0 0 0 1px #1f3b46;
+}
+.dark .react-flow__controls-button {
+  background: #102733;
+  border-bottom: 1px solid #1f3b46;
+  color: #cdd9de;
+  fill: #cdd9de;
+}
+.dark .react-flow__controls-button:hover {
+  background: #16303a;
+}
+.dark .react-flow__minimap {
+  background: #0b1a20;
+  border-color: #1f3b46;
+}
+
+/* ── 夜间可读性补强：修正「浅底浅字 / 深底深字」与图表低对比 ── */
+
+/* 金色按钮：浅色模式为深墨字，暗色模式此前被 .dark .text-ink-900 兜底成白字，
+   叠在亮金底上对比度不足。金底元素统一保持深墨字，日/夜均清晰。 */
+.dark .bg-gold-600 {
+  color: #0c2129;
+}
+
+/* 硬编码状态徽章（浅底 + 深字）在暗色下改深底 + 亮字，避免刺眼且保证文字可读 */
+.dark .bg-amber-100 { background-color: #3a2c14; }
+.dark .text-amber-700 { color: #f0cd8a; }
+.dark .bg-emerald-100 { background-color: #12332a; }
+.dark .text-emerald-700 { color: #8ee0b8; }
+.dark .bg-sky-100 { background-color: #12303b; }
+.dark .text-sky-700 { color: #9ed3ee; }
+
+/* 悬停态白底会与暗色下的浅色文字形成白底白字，统一转深青 */
+.dark .hover\:bg-white:hover { background-color: #16303a; }
+
+/* 原生下拉选项由系统渲染，显式指定深底浅字避免白底白字 */
+.dark select option {
+  background-color: #0e2129;
+  color: #e7eef1;
+}
+
+/* 深底上的低透明度浅字提亮，保证装饰性小字仍清晰 */
+.dark .text-paper-50\/45,
+.dark .text-paper-50\/48,
+.dark .text-paper-50\/50,
+.dark .text-paper-50\/55,
+.dark .text-paper-50\/60,
+.dark .text-paper-50\/62 {
+  color: #c3d0d5;
+}
+
+/* 辅助文字的透明度变体在暗色下叠深底会偏灰，统一提亮 */
+.dark .text-muted-foreground\/60,
+.dark .text-muted-foreground\/70,
+.dark .text-muted-foreground\/80 {
+  color: #a8b9c0;
+}
+
+/* 暗色下偏暗的浅层级文字 / 图标提亮（空状态、404、加载指示、节点小字） */
+.dark .text-ink-300 { color: #8fa6ae; }
+.dark .text-ink-400 { color: #8298a1; }
+
+/* 世系连线在暗色画布上略提亮，保持可见 */
+.dark .react-flow__edge-path { stroke: #3d6575; }
+
+/* 移动端目录按钮：中心位于可视高度 67%（距底 33%）。
+   fixed 元素的 top 百分比依赖包含块高度，Portal 挂在 body 上时，部分移动浏览器
+   会把按钮解析到接近屏幕底部；svh 直接按视口计算，也不随地址栏收放跳动。
+   67% 仅作不支持 svh 的旧浏览器兜底。<640px 生效，桌面端维持 50% + 56px。 */
+@media (max-width: 639px) {
+  .legal-toc-anchor {
+    margin-top: 0;
+    top: 67%;
+    top: 67svh;
+  }
+}
+
+/* ── 夜间可读性最终兜底：硬编码深色文字在深底上统一提亮 ──
+   组件内已用 dark: 变体逐处适配，此处为防遗漏的第二道保险；
+   选择器需按 Tailwind 任意值类名做 CSS 转义（与上方 .dark 兜底同风格）。 */
+.dark .text-\[\#1c1c1c\],
+.dark .text-\[\#2b2b2b\],
+.dark .text-\[\#333\],
+.dark .text-\[\#22303f\] {
+  color: #e7eef1;
+}
+/* 辅助/外衍灰字（#9a948a / #a8a29a / #a9b4bf）本身在深底上对比度已足够，
+   由组件内的 dark: 变体分级提亮，此处不统一覆盖，以保留层级弱化关系。 */
+
+/* ── 谱页例外：夜间保持纸面配色 ──────────────────────────────────────────
+   谱页六档都是纸面视图。欧式谱 / 欧苏谱 / 苏式谱由 styles/print.css 直接给纸色，
+   本来就不受 .dark 影响；卡片谱、垂丝谱、树形谱复用站点世系图节点组件
+   （MemberNode / SuMemberNode / IndentTree），节点上的 bg-paper / text-ink / border
+   与 dark: 变体会跟着 html.dark 一起转深底，于是同一张谱里出现深色画布。
+   下面把 .dark 的令牌与深色兜底在 .print-page 子树内还原为日间值，使六档在夜间
+   仍是同一张纸；站点世系图不在这棵子树里，夜间配色不受影响。
+   维护提示：三档若新增带透明度修饰符的字色（如 text-ink-700/60 或 text-ink-600/70），
+   需在本节补一条对应还原，否则夜间会被上方兜底覆盖。 */
+html.dark .print-page {
+  /* .dark .bg-white 借 --card 取色，这里回到纸白 */
+  --card: 0 0% 100%;
+  --border: 41 22% 86%;
+  --input: 41 22% 84%;
+  /* 节点姓名与世系装饰色：均在组件内联 style 里以 var() 引用 */
+  --node-ink: #12303b;
+  --tree-line: #9aa6ad;
+  --tree-line-soft: #d2cfc8;
+  --baota-line: #dcdcdc;
+  --tree-guide: #8299ab;
+  --tree-dot: #d9d3c6;
+  --su-frame-line: #1c1c1c;
+  --dot-blood: #b3261e;
+  --dot-extended: #b9b3a8;
+}
+
+/* 纸色底（卡片、头像栏、折叠占位）回到日间值 */
+html.dark .print-page .bg-paper-50 { background-color: #fbfaf7; }
+html.dark .print-page .bg-paper-100 { background-color: #f4f1ea; }
+html.dark .print-page .bg-paper-200 { background-color: #ece7da; }
+html.dark .print-page .bg-paper-300 { background-color: #ded7c6; }
+html.dark .print-page .bg-paper-400 { background-color: #cfc8b9; }
+html.dark .print-page .bg-paper-50\/60 { background-color: rgb(251 250 247 / 0.6); }
+html.dark .print-page .bg-paper-50\/70 { background-color: rgb(251 250 247 / 0.7); }
+html.dark .print-page .bg-paper-50\/92 { background-color: rgb(251 250 247 / 0.92); }
+html.dark .print-page .bg-paper-50\/95 { background-color: rgb(251 250 247 / 0.95); }
+html.dark .print-page .bg-paper-100\/60 { background-color: rgb(244 241 234 / 0.6); }
+html.dark .print-page .bg-paper-100\/70 { background-color: rgb(244 241 234 / 0.7); }
+html.dark .print-page .bg-paper-100\/80 { background-color: rgb(244 241 234 / 0.8); }
+html.dark .print-page .bg-paper-200\/70 { background-color: rgb(236 231 218 / 0.7); }
+html.dark .print-page .bg-ink-50 { background-color: #f0f4f6; }
+html.dark .print-page .bg-ink-100 { background-color: #dce6ea; }
+html.dark .print-page .bg-gold-100 { background-color: #f3ebd9; }
+html.dark .print-page .bg-gold-200 { background-color: #e7d9bc; }
+html.dark .print-page .bg-seal-100 { background-color: #f5e4df; }
+html.dark .print-page .hover\:bg-white:hover { background-color: #fff; }
+html.dark .print-page .hover\:bg-paper-50:hover { background-color: #fbfaf7; }
+html.dark .print-page .hover\:bg-paper-100:hover { background-color: #f4f1ea; }
+html.dark .print-page .hover\:bg-paper-200:hover { background-color: #ece7da; }
+html.dark .print-page .hover\:bg-paper-100\/60:hover { background-color: rgb(244 241 234 / 0.6); }
+html.dark .print-page .hover\:bg-paper-200\/70:hover { background-color: rgb(236 231 218 / 0.7); }
+html.dark .print-page .hover\:bg-seal-100:hover { background-color: #f5e4df; }
+
+/* 墨色文字（节点姓名、世次、徽章、字/号、生卒）回到日间值 */
+html.dark .print-page .text-ink-900 { color: #0c2129; }
+html.dark .print-page .text-ink-800 { color: #12303b; }
+html.dark .print-page .text-ink-700 { color: #173a47; }
+html.dark .print-page .text-ink-600 { color: #1e4859; }
+html.dark .print-page .text-ink-500 { color: #2f6377; }
+html.dark .print-page .text-ink-400 { color: #4c7f92; }
+html.dark .print-page .text-ink-300 { color: #7ea0ae; }
+html.dark .print-page .text-muted-foreground { color: hsl(195 15% 29%); }
+html.dark .print-page .text-muted-foreground\/80 { color: hsl(195 15% 29% / 0.8); }
+html.dark .print-page .text-gold-700 { color: #8f7134; }
+html.dark .print-page .text-gold-700\/80 { color: rgb(143 113 52 / 0.8); }
+html.dark .print-page .text-gold-600 { color: #c9a227; }
+html.dark .print-page .text-seal-700 { color: #83372a; }
+html.dark .print-page .text-seal-600 { color: #b04a3a; }
+html.dark .print-page .text-\[\#1c1c1c\] { color: #1c1c1c; }
+html.dark .print-page .text-\[\#2b2b2b\] { color: #2b2b2b; }
+html.dark .print-page .text-\[\#333\] { color: #333; }
+html.dark .print-page .text-\[\#22303f\] { color: #22303f; }
+
+/* 描边回到日间值（卡片外框、外衍虚线、谱系树节点与折叠按钮） */
+html.dark .print-page .border-paper-200 { border-color: #ece7da; }
+html.dark .print-page .border-paper-300 { border-color: #ded7c6; }
+html.dark .print-page .border-paper-400 { border-color: #cfc8b9; }
+html.dark .print-page .border-ink-300 { border-color: #7ea0ae; }
+
+/* 节点组件里的 dark: 变体（组件本身日夜共用，只能在谱页内压回日间色） */
+html.dark .print-page .dark\:text-\[\#9fb2ba\] { color: #9a948a; }
+html.dark .print-page .dark\:text-\[\#9ec8ec\] { color: #1a5fb4; }
+html.dark .print-page .dark\:border-\[\#527d8d\] { border-color: #7c8a90; }
+html.dark .print-page .dark\:border-\[\#34535f\] { border-color: #c9d6e2; }
+html.dark .print-page .dark\:border-\[\#2c4a55\] { border-color: #d5dde5; }
+/* 同一 dark 类在展开按钮（#4a90d9）与选中态（#1a5fb4）两处复用；谱页是只读视图，
+   选中态不会出现，故按展开按钮的日间色还原。 */
+html.dark .print-page .dark\:border-\[\#7fa8cc\] { border-color: #4a90d9; }
+html.dark .print-page .dark\:bg-\[\#7fa8cc\] { background-color: #4a90d9; }
+html.dark .print-page .dark\:bg-\[\#3f5f73\] { background-color: #8fa3b5; }
+
+/* 缩略图遮罩由 React Flow 内联为浅色填充，暗色下会盖住深底节点 */
+.dark .react-flow__minimap-mask {
+  fill: rgba(11, 26, 32, 0.72) !important;
+}
+
+/* 选中/悬停连线在暗底上提亮，保持可辨 */
+.dark .react-flow__edge.selected .react-flow__edge-path,
+.dark .react-flow__edge:hover .react-flow__edge-path {
+  stroke: #7fa8cc;
+}
+

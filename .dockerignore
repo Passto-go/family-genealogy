@@ -1,0 +1,23 @@
+# 依赖与构建产物（容器内重新生成）
+node_modules
+dist
+.cache
+
+# 运行时数据目录（运行时通过卷挂载，不进镜像）
+server/data
+
+# 密钥与环境变量（生产用环境变量注入，禁止打进镜像）
+.env
+.env.*
+*.db
+*.db-*
+*.bak
+server/data/.session-secret
+
+# 版本控制与系统垃圾文件
+.git
+.gitignore
+.DS_Store
+
+# 非运行时目录（预览产物等，体积大且无用）
+previews

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方案 B2 · 图传分页 · 沈氏谱</title>
+<link rel="stylesheet" href="./proto.css">
+</head>
+<body>
+
+<header class="switcher">
+  <b>欧苏谱版式</b>
+  <a href="./index.html">总览</a>
+  <a href="./a.html">A · 上图下传</a>
+  <a href="./b.html">B · 右图左传</a>
+  <a class="on" href="./b2.html">B2 · 图传分页</a>
+  <span>沈氏 · 世次四至七 · 35 人 · 一页图一页传</span>
+</header>
+
+<div class="sheet-fit">
+  <div class="sheet">
+    <div class="head">
+      <b>沈氏宗谱</b>
+      <i>卷之一　卷首　世系图　世次四至七</i>
+    </div>
+
+    <div class="b2-chart" id="chart"></div>
+
+    <div class="foot">
+      <span>图只标本姓血脉，外衍不入图；一页一幅，跨卷另起</span>
+      <span>一</span>
+    </div>
+  </div>
+</div>
+
+<div class="sheet-fit">
+  <div class="sheet">
+    <div class="head">
+      <b>沈氏宗谱</b>
+      <i>卷之一　行传　世次四至七</i>
+    </div>
+
+    <div class="b2-bio" id="bio"></div>
+
+    <div class="foot">
+      <span>一人一栏，栏首朱点为名；同一房支连贯到底，不与他房交错</span>
+      <span>二</span>
+    </div>
+  </div>
+</div>
+
+<script src="./data.js"></script>
+<script src="./proto.js"></script>
+<script>
+(function () {
+  var C = window.PROTO_CTX, U = window.PROTO_UTIL
+
+  /* 谱序：先按房支、再按长幼，同房支连贯，不与其他房支交错 */
+  var people = U.lineageOrder(
+    C.members.filter(function (m) { return !m.isMarriedIn && m.generation <= 7 }),
+    C.family.branches
+  )
+
+  /* 卷首：通栏一幅吊线图 */
+  document.getElementById('chart').innerHTML = U.svgChart(people, {
+    font: 12.5, gapX: 12, padX: 7, gapY: 140, nodeH: 24, rowLabels: true, labelW: 30,
+  })
+
+  /* 行传：竖排满幅，一栏一人，右起，世代为组 */
+  var bio = document.getElementById('bio')
+  var gens = []
+  people.forEach(function (m) { if (gens.indexOf(m.generation) < 0) gens.push(m.generation) })
+  gens.sort(function (a, b) { return a - b })
+
+  gens.forEach(function (g) {
+    var wrap = document.createElement('div')
+    wrap.className = 'b-gen'
+    var tag = document.createElement('div')
+    tag.className = 'b-gtag'
+    tag.textContent = U.genLabel(g)
+    wrap.appendChild(tag)
+
+    people.filter(function (m) { return m.generation === g }).forEach(function (m) {
+      var col = document.createElement('div')
+      col.className = 'b-col' + (C.blood.has(m.id) ? '' : ' ext')
+      col.innerHTML = '<span class="n">' + m.name + '</span><span class="m">' + U.memoOf(m) + '</span>'
+      wrap.appendChild(col)
+    })
+    bio.appendChild(wrap)
+  })
+
+  U.fitSheets()
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+[Unit]
+Description=Genealogy TLS cert-manager (acme.sh DNS-01)
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/srv/family-genealogy/secrets/cert-manager.env
+ExecStart=/srv/family-genealogy/bin/cert-manager.sh run

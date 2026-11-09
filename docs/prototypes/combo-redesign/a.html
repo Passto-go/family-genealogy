@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方案 A · 上图下传 · 沈氏谱</title>
+<link rel="stylesheet" href="./proto.css">
+</head>
+<body>
+
+<header class="switcher">
+  <b>欧苏谱版式</b>
+  <a href="./index.html">总览</a>
+  <a class="on" href="./a.html">A · 上图下传</a>
+  <a href="./b.html">B · 右图左传</a>
+  <a href="./b2.html">B2 · 图传分页</a>
+  <span>沈氏 · 世次四至七 · 35 人</span>
+</header>
+
+<div class="sheet-fit">
+  <div class="sheet">
+    <div class="head">
+      <b>沈氏宗谱</b>
+      <i>卷之一　世系图、行传合卷　世次四至七</i>
+    </div>
+
+    <div class="a-chart" id="chart"></div>
+    <div class="a-bios" id="bios"></div>
+
+    <div class="foot">
+      <span>图上浅色为外衍（出嫁女之子女），只入行传，不再下衍；行传名下有「适」者为女</span>
+      <span>一</span>
+    </div>
+  </div>
+</div>
+
+<script src="./data.js"></script>
+<script src="./proto.js"></script>
+<script>
+(function () {
+  var C = window.PROTO_CTX, U = window.PROTO_UTIL
+  var MAX_G = 7
+  /* 谱序：先按房支、再按长幼，同房支连贯，不与其他房支交错 */
+  var people = U.lineageOrder(
+    C.members.filter(function (m) { return !m.isMarriedIn && m.generation <= MAX_G }),
+    C.family.branches
+  )
+
+  /* 上图：全族（含外衍）一幅吊线图，按世次排行 */
+  document.getElementById('chart').innerHTML = U.svgChart(people, {
+    font: 11.5, gapX: 11, padX: 6, gapY: 56, nodeH: 22, rowLabels: true, labelW: 28,
+  })
+
+  /* 下传：按世次排的行传，横向三栏，栏满另起一栏（世次标目随栏重出） */
+  var gens = []
+  people.forEach(function (m) { if (gens.indexOf(m.generation) < 0) gens.push(m.generation) })
+  gens.sort(function (a, b) { return a - b })
+
+  var blocks = gens.map(function (g) {
+    var list = people.filter(function (m) { return m.generation === g })
+    return { g: g, rows: list.map(function (m) {
+      var row = document.createElement('div')
+      row.className = 'a-row' + (C.blood.has(m.id) ? '' : ' ext')
+      row.innerHTML = '<span class="nm">' + m.name + '</span><span class="mm">' + U.memoOf(m) + '</span>'
+      return row
+    }) }
+  })
+
+  var host = document.getElementById('bios')
+  var COLS = 3, GAP = 26
+  var colW = (host.clientWidth - GAP * (COLS - 1)) / COLS
+
+  /* 先量每行在栏宽下的实际高度，再按栏高切分 */
+  var ruler = document.createElement('div')
+  ruler.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;width:' + colW + 'px'
+  host.appendChild(ruler)
+  var heights = blocks.map(function (b) {
+    return b.rows.map(function (row) {
+      ruler.appendChild(row)
+      var h = row.getBoundingClientRect().height
+      return h
+    })
+  })
+  ruler.innerHTML = ''
+  var labelH = 26, labelGap = 14
+
+  var total = 0
+  blocks.forEach(function (b, i) {
+    total += labelH
+    heights[i].forEach(function (h) { total += h })
+  })
+
+  function headHeight(bi, i, n) {
+    var h = labelH + labelGap
+    for (var k = 0; k < n && i + k < heights[bi].length; k++) h += heights[bi][i + k]
+    return h
+  }
+
+  /* 按目标栏高切栏；试几个目标值，取各栏最齐的一组 */
+  function pack(target) {
+    var cols = [[]]
+    var hs = [0]
+    var cur = cols[0]
+    var curH = 0
+    var lastG = null
+
+    function add(item, h) {
+      cur.push(item)
+      curH += h
+      hs[hs.length - 1] = curH
+    }
+
+    blocks.forEach(function (b, bi) {
+      var i = 0
+      while (i < b.rows.length) {
+        var needLabel = cur.length === 0 || lastG !== b.g
+        if (cur.length > 0 && cols.length < COLS) {
+          var need = needLabel ? headHeight(bi, i, Math.min(2, b.rows.length - i)) : heights[bi][i]
+          if (curH + need > target) {
+            cur = []
+            cols.push(cur)
+            hs.push(0)
+            curH = 0
+            needLabel = true
+          }
+        }
+        if (needLabel) {
+          add({ label: b.g }, labelH + (cur.length ? labelGap : 0))
+          lastG = b.g
+        }
+        add({ row: b.rows[i] }, heights[bi][i])
+        i++
+      }
+    })
+    return { cols: cols, spread: Math.max.apply(null, hs) - Math.min.apply(null, hs) }
+  }
+
+  var best = null
+  for (var k = 0; k <= 10; k++) {
+    var r = pack((total / COLS) * (1 + k * 0.03))
+    if (!best || r.spread < best.spread) best = r
+  }
+  var cols = best.cols
+
+  host.innerHTML = ''
+  cols.forEach(function (col) {
+    var box = document.createElement('div')
+    box.className = 'a-col'
+    col.forEach(function (it) {
+      if (it.label != null) {
+        var h = document.createElement('h4')
+        h.className = 'a-h'
+        h.textContent = U.genLabel(it.label)
+        box.appendChild(h)
+      } else {
+        box.appendChild(it.row)
+      }
+    })
+    host.appendChild(box)
+  })
+
+  U.fitSheets()
+})()
+</script>
+</body>
+</html>

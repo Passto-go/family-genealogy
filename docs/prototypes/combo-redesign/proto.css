@@ -1,0 +1,160 @@
+/* 欧苏谱重设计 · 两版静态对比共用样式
+   纸色、字号、装帧与正式谱页同一套取值，便于直接判断效果 */
+
+* { box-sizing: border-box; }
+
+html { -webkit-font-smoothing: antialiased; }
+
+body {
+  margin: 0;
+  padding: 56px 0 64px;
+  background: #f4f1ea;
+  color: #1c1c1c;
+  font-family: "Noto Serif SC", "Songti SC", "SimSun", serif;
+}
+
+/* ── 顶部方案切换条 ── */
+.switcher {
+  position: fixed; inset: 0 0 auto 0; z-index: 10;
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 18px;
+  background: #fbfaf7; border-bottom: 1px solid #ded7c6;
+  font-size: 12px; letter-spacing: .06em;
+}
+.switcher b { margin-right: 12px; font-size: 12.5px; letter-spacing: .14em; font-weight: 600; }
+.switcher a {
+  padding: 4px 10px; color: #4b5b61; text-decoration: none;
+  border: 1px solid transparent;
+}
+.switcher a:hover { background: #ece7da; }
+.switcher a.on { background: #12303b; border-color: #12303b; color: #fbfaf7; }
+.switcher span { margin-left: auto; color: #8a8578; font-size: 12px; letter-spacing: .04em; }
+
+@media (max-width: 760px) {
+  .switcher { flex-wrap: wrap; gap: 4px; padding: 8px 12px; }
+  .switcher span { display: none; }
+}
+
+/* ── 纸面 ── */
+.sheet-fit { position: relative; overflow: hidden; }
+.sheet {
+  width: 1240px; max-width: calc(100% - 48px);
+  margin: 0 auto 26px; padding: 14px 18px 8px;
+  background: #fff; border: 1px solid #1c1c1c;
+  outline: 3px solid #1c1c1c; outline-offset: 4px;
+  transform-origin: top left;
+}
+/* B 版是带书脊的对开，纸面按两页宽取值，屏幕放不下时整体等比缩 */
+.sheet.wide { width: 1600px; max-width: none; }
+.head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding-bottom: 8px; border-bottom: 1px solid #1c1c1c;
+}
+.head b { font-size: 15px; font-weight: 600; letter-spacing: .18em; }
+.head i { font-style: normal; font-size: 12px; letter-spacing: .12em; color: #4a453d; }
+.foot {
+  display: flex; justify-content: space-between; gap: 16px;
+  margin-top: 10px; padding-top: 6px;
+  border-top: 1px solid #ded7c6;
+  font-size: 12px; letter-spacing: .06em; color: #7a746a;
+}
+
+/* ══ 方案 A：上图下传 ══════════════════════════════════════════ */
+.a-chart {
+  margin: 10px 0 2px; padding: 6px 0 10px;
+  border-bottom: 1px solid #ded7c6;
+  text-align: center;
+}
+.a-chart svg { display: inline-block; vertical-align: top; }
+.a-chart .ext text { fill: #6b6257; }
+
+/* 小传：横向三栏，按世次顺序连续排下去 */
+.a-bios { display: flex; gap: 26px; padding-top: 12px; align-items: stretch; }
+.a-col { flex: 1 1 0; min-width: 0; position: relative; }
+.a-col + .a-col::before {
+  content: ''; position: absolute; left: -13px; top: 0; bottom: 0;
+  width: 1px; background: #eee8da;
+}
+.a-h {
+  margin: 0 0 6px; padding-bottom: 4px;
+  border-bottom: 1px solid #ded7c6;
+  font-size: 12px; font-weight: 600; letter-spacing: .16em; color: #8f7134;
+}
+.a-row + .a-h { margin-top: 14px; }
+.a-row {
+  display: flex; gap: 7px; align-items: baseline;
+  padding: 2px 0; font-size: 12px; line-height: 1.8;
+}
+.a-row .nm {
+  flex: 0 0 auto; min-width: 44px;
+  font-size: 12.5px; font-weight: 600; letter-spacing: .04em;
+}
+.a-row .mm { min-width: 0; color: #3f3a33; }
+.a-row.ext .nm { color: #6b6257; font-weight: 400; }
+.a-row.ext .mm { color: #6b6257; }
+
+/* ══ 方案 B：右图左传 ══════════════════════════════════════════ */
+.b-main {
+  display: flex; align-items: stretch; margin-top: 10px;
+  height: var(--b-h, 600px);
+  border: 1px solid #1c1c1c;
+}
+/* 竖排小传：每世一组，组内一栏一行文字，右起排列 */
+.b-bio {
+  display: flex; flex-direction: row-reverse; align-items: stretch;
+  flex: 0 0 auto; overflow: hidden;
+}
+.b-gen { display: flex; flex-direction: row-reverse; align-items: stretch; }
+.b-gtag {
+  flex: 0 0 auto; writing-mode: vertical-rl; text-orientation: upright;
+  padding: 10px 2px 0 3px;
+  border-left: 1px solid #ded7c6;
+  font-size: 12px; letter-spacing: .18em; color: #8f7134;
+}
+.b-col {
+  flex: 0 0 auto; width: 34px;
+  writing-mode: vertical-rl; text-orientation: upright; white-space: nowrap;
+  padding: 10px 0 10px 7px;
+  border-left: 1px solid #e2dacb;
+}
+.b-col .n { font-size: 17px; font-weight: 600; letter-spacing: .1em; }
+.b-col .n::before {
+  content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+  background: #b3261e; margin-bottom: 7px;
+}
+.b-col .m { font-size: 12px; letter-spacing: .02em; color: #575146; margin-top: 9px; }
+.b-col.ext .n, .b-col.ext .m { color: #6b6257; }
+
+.b-spine {
+  display: flex; flex: 0 0 62px; flex-direction: column;
+  align-items: center; justify-content: center; gap: 22px;
+  writing-mode: vertical-rl; text-orientation: upright;
+  border-left: 1px solid #1c1c1c; border-right: 1px solid #1c1c1c;
+}
+.b-spine b { font-size: 17px; font-weight: 600; letter-spacing: .3em; }
+.b-spine i { font-style: normal; font-size: 12px; letter-spacing: .14em; color: #4a453d; }
+
+.b-chart {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px 8px;
+}
+.b-chart svg { display: block; }
+.b-chart .ext text { fill: #6b6257; }
+
+/* ══ 方案 B2：图传分页 ══════════════════════════════════════════ */
+/* 卷首一页：通栏吊线图，一页一幅 */
+.b2-chart {
+  margin-top: 12px; height: 620px;
+  display: flex; align-items: center; justify-content: center;
+  border-bottom: 1px solid #ded7c6;
+  text-align: center;
+}
+.b2-chart svg { display: inline-block; vertical-align: top; }
+.b2-chart .ext text { fill: #6b6257; }
+/* 次页：行传满幅，一栏一人，右起 */
+.b2-bio {
+  display: flex; flex-direction: row-reverse; align-items: stretch;
+  height: 620px; padding-top: 12px;
+}
+.b2-bio .b-col { width: 32px; padding-left: 6px; }

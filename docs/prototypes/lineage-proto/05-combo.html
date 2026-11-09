@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图5 · 欧苏结合</title>
+<style>
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#f4f1ea; color:#1c1c1c;
+    font-family:"Songti SC","SimSun","Noto Serif CJK SC",serif;
+  }
+  .topbar{
+    display:flex; align-items:baseline; gap:14px;
+    padding:14px 22px 10px; border-bottom:1px solid #e2ddd2;
+    font-family:-apple-system,"PingFang SC",sans-serif; font-size:14px;
+  }
+  .topbar b{font-size:15px; letter-spacing:.04em}
+  .topbar span{font-size:12px; color:#7a746a}
+  .topbar a{margin-left:auto; font-size:12px; color:#1a5fb4; text-decoration:none}
+
+  .wrap{padding:24px 22px 50px; overflow-x:auto}
+  .frame{
+    display:flex; align-items:stretch; width:100%; max-width:1240px; margin:0 auto;
+    background:#fff; border:1px solid #1c1c1c; outline:3px solid #1c1c1c; outline-offset:4px;
+  }
+  .bio{
+    display:flex; flex-direction:row-reverse; align-items:stretch;
+    flex:0 0 auto; height:520px; border-right:1px solid #1c1c1c; overflow:hidden;
+  }
+  .col{
+    writing-mode:vertical-rl; text-orientation:upright;
+    flex:0 0 auto; padding:12px 5px; border-left:1px solid #2a2a2a; position:relative;
+  }
+  .col:first-child{border-left:0}
+  .person{display:inline-block; height:100%; vertical-align:top; margin-left:4px}
+  .person:first-child{margin-left:0}
+  .pn{font-size:13px; line-height:1; font-weight:600; letter-spacing:.08em; margin-left:2px}
+  .pn.ph{color:#a8a29a; font-weight:400}
+  .pm{font-size:7.4px; line-height:1.4; letter-spacing:.06em; color:#3a3a3a}
+  .sec{
+    position:absolute; left:5px; bottom:5px; writing-mode:horizontal-tb;
+    font-size:9px; letter-spacing:.18em; color:#9a948a;
+  }
+  .spine{
+    flex:0 0 46px; border-right:1px solid #1c1c1c; border-left:1px solid #1c1c1c;
+    writing-mode:vertical-rl; text-orientation:upright;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:26px; letter-spacing:.4em; font-size:13px; padding:16px 0; user-select:none;
+  }
+  .spine b{font-size:18px; letter-spacing:.46em; font-weight:600}
+  .spine i{font-style:normal; font-size:10.5px; letter-spacing:.24em; color:#4a4a4a}
+  .chart{flex:0 0 620px; width:620px; padding:6px 8px; display:flex; align-items:center}
+  .chart svg{display:block; width:100%; height:auto}
+  .foot{
+    max-width:1240px; margin:0 auto; padding:0 22px 30px;
+    font-family:-apple-system,"PingFang SC",sans-serif; font-size:11.5px; color:#8b8478; line-height:1.7;
+  }
+  @media (max-width:760px){
+    .topbar{flex-wrap:wrap; gap:6px 12px; padding:12px 14px}
+    .wrap{padding:14px 10px 36px}
+    .bio{height:640px}
+    .pn{font-size:14px}
+    .pm{font-size:8.5px}
+    .spine{flex-basis:30px; font-size:10px}
+    .spine b{font-size:12px}
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <b>清溪沈氏 · 欧苏结合</b>
+    <span>版式五：左小传、右吊线，共用一套世次（参照图 5）</span>
+    <a href="./index.html">← 返回五种版式</a>
+  </div>
+
+  <div class="wrap">
+    <div class="frame">
+      <div class="bio" id="bio"></div>
+      <div class="spine">
+        <b>清溪沈氏宗谱</b>
+        <i>公元二〇二六年　岁次丙午</i>
+      </div>
+      <div class="chart" id="chart"></div>
+    </div>
+  </div>
+  <p class="foot" id="note"></p>
+
+<script src="./data.js"></script>
+<script>
+(function () {
+  var U = window.LINEAGE_UTIL, L = window.LINEAGE;
+  var CN_DIGIT = ["〇","一","二","三","四","五","六","七","八","九"];
+  var CN = ["一","二","三","四","五","六","七","八","九","十"];
+
+  function cnYear(s) {
+    return s ? String(s).replace(/\d/g, function (d) { return CN_DIGIT[+d]; }) : "";
+  }
+  function memo(p) {
+    var kids = U.children(p.id);
+    var parts = [];
+    if (p.s) parts.push("配" + p.s);
+    parts.push(p.b || p.d ? cnYear(p.b || "？") + "—" + cnYear(p.d || "今") : "生卒未详");
+    parts.push(kids.length ? "生子" + kids.map(function (k) { return U.short(k.n); }).join("、") : "无嗣");
+    return parts.join("，") + "。";
+  }
+
+  /* —— 左：欧式竖排小传 —— */
+  var bio = document.getElementById("bio");
+  // 结合版只排前五世：右栏吊线在有限宽度内才看得清
+  var MAX_G = 5;
+  var DATA = L.people.filter(function (p) { return p.g <= MAX_G; });
+
+  for (var g = 1; g <= MAX_G; g++) {
+    var col = document.createElement("div");
+    col.className = "col";
+    var list = DATA.filter(function (p) { return p.g === g; });
+    col.style.width = list.length * 30 + 8 + "px";
+    list.forEach(function (p) {
+      var box = document.createElement("div");
+      box.className = "person";
+      var nm = document.createElement("span");
+      nm.className = "pn" + (p.ph ? " ph" : "");
+      nm.textContent = U.short(p.n);
+      var mm = document.createElement("span");
+      mm.className = "pm";
+      mm.textContent = memo(p);
+      box.appendChild(nm); box.appendChild(mm);
+      col.appendChild(box);
+    });
+    var sec = document.createElement("span");
+    sec.className = "sec";
+    sec.textContent = "第" + g + "世";
+    col.appendChild(sec);
+    bio.appendChild(col);
+  }
+
+  /* —— 右：苏式吊线 —— */
+  var NODE_W = 64, GAP = 8, ROW_H = 68, TOP = 34, PAD_X = 28;
+  var NS = "http://www.w3.org/2000/svg";
+  var kidsMap = {};
+  DATA.forEach(function (p) {
+    if (p.f === null) return;
+    (kidsMap[p.f] = kidsMap[p.f] || []).push(p);
+  });
+  var roots = DATA.filter(function (p) { return p.f === null; });
+
+  function measure(p) {
+    var kids = kidsMap[p.id] || [];
+    if (!kids.length) { p._w = NODE_W; return p._w; }
+    var w = 0;
+    kids.forEach(function (k) { w += measure(k); });
+    w += GAP * (kids.length - 1);
+    p._w = Math.max(NODE_W, w);
+    return p._w;
+  }
+  function place(p, x) {
+    var kids = kidsMap[p.id] || [];
+    var cx = x;
+    kids.forEach(function (k) { place(k, cx); cx += k._w + GAP; });
+    p._x = kids.length ? (kids[0]._x + kids[kids.length - 1]._x) / 2 : x + p._w / 2;
+    p._y = TOP + (p.g - 1) * ROW_H;
+  }
+  function el(name, attrs, text) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  var cursor = PAD_X;
+  roots.forEach(function (r) { measure(r); place(r, cursor); cursor += r._w + GAP * 2; });
+  var treeW = cursor - PAD_X - GAP * 2;
+  var W = Math.ceil(treeW + PAD_X * 2);
+  var H = TOP + MAX_G * ROW_H + 20;
+  var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "欧苏结合世系图" });
+
+  for (var gi = 1; gi <= MAX_G; gi++) {
+    svg.appendChild(el("text", {
+      x: 8, y: TOP + (gi - 1) * ROW_H + 4, "font-size": 9.5, fill: "#8a8478", "letter-spacing": "1"
+    }, (CN[gi - 1] || gi) + "世"));
+  }
+
+  DATA.forEach(function (p) {
+    var kids = kidsMap[p.id] || [];
+    if (!kids.length) return;
+    var midY = p._y + ROW_H / 2 - 6;
+    svg.appendChild(el("line", { x1: p._x, y1: p._y + 7, x2: p._x, y2: midY, stroke: "#8f8a80", "stroke-width": 1 }));
+    svg.appendChild(el("line", { x1: kids[0]._x, y1: midY, x2: kids[kids.length - 1]._x, y2: midY, stroke: "#8f8a80", "stroke-width": 1 }));
+    kids.forEach(function (k) {
+      svg.appendChild(el("line", { x1: k._x, y1: midY, x2: k._x, y2: k._y - 5, stroke: "#8f8a80", "stroke-width": 1 }));
+    });
+  });
+
+  DATA.forEach(function (p) {
+    svg.appendChild(el("circle", { cx: p._x - 26, cy: p._y, r: 2, fill: p.ph ? "#b9b3a8" : "#b3261e" }));
+    svg.appendChild(el("text", {
+      x: p._x - 19, y: p._y + 4, "font-size": 11.5, fill: p.ph ? "#a8a29a" : "#1c1c1c", "letter-spacing": "0.4"
+    }, p.n));
+  });
+
+  document.getElementById("chart").appendChild(svg);
+  document.getElementById("note").textContent =
+    L.note + "。左侧小传与右侧吊线为同一批人，浅色为占位族人；小屏可横向滚动。";
+})();
+</script>
+</body>
+</html>
