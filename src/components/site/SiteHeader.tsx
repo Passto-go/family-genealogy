@@ -252,17 +252,14 @@ export function SiteHeader({ variant = "portal" }: { variant?: SiteHeaderVariant
                 <Sun className="size-4" strokeWidth={1.6} />
               )}
             </button>
-            {/* 只读演示站不提供后台入口：无凭证可登录，暴露入口只会误导访客 */}
-            {__DEMO__ ? null : (
-              <Link
-                to="/admin/login"
-                title="管理后台登录"
-                aria-label="管理后台登录"
-                className={iconBtnClass}
-              >
-                <LogIn className="size-4" strokeWidth={1.6} />
-              </Link>
-            )}
+            <Link
+              to="/admin/login"
+              title="管理后台登录"
+              aria-label="管理后台登录"
+              className={iconBtnClass}
+            >
+              <LogIn className="size-4" strokeWidth={1.6} />
+            </Link>
           </div>
         </div>
       </div>

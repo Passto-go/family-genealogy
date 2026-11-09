@@ -91,6 +91,11 @@ export default function Login() {
             <p className="mt-2 text-[12.5px] tracking-[0.16em] text-muted-foreground">
               {family?.name || "家族族谱"}　·　{family?.hallName || "谱牒管理"}
             </p>
+            {__DEMO__ ? (
+              <p className="mt-3 border border-dashed border-gold-600/40 px-3 py-2 text-[11.5px] leading-relaxed tracking-[0.04em] text-ink-600">
+                只读演示：任意账号与密码均可登录，进入后只能查看，所有修改都会被拒绝。
+              </p>
+            ) : null}
           </div>
 
           {mfaStep ? (

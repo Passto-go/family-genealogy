@@ -239,6 +239,11 @@ export default function AdminLayout() {
 
         <main className="flex-1 px-4 py-7 sm:px-8 sm:py-9">
           <div className="mx-auto w-full max-w-[1080px]">
+            {__DEMO__ ? (
+              <p className="mb-5 border border-dashed border-gold-600/40 bg-gold-500/5 px-4 py-2.5 text-[12px] leading-relaxed tracking-[0.04em] text-ink-600">
+                只读演示：数据为示例族谱，所有修改操作都会被拒绝。反馈审核、管理员、操作日志、证书域名等页只展示结构与空状态。
+              </p>
+            ) : null}
             <Outlet />
           </div>
         </main>
