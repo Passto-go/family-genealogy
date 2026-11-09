@@ -116,13 +116,13 @@ export default function About() {
           <li className="flex gap-2.5">
             <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold-600" />
             <span>
-              不接入任何统计、广告或第三方脚本，页面与字体等静态资源皆自托管，浏览不经第三方。
+              页面与字体皆由本站与访客设备自行提供，不依赖第三方 CDN；仅接入百度统计以观访问之数，屏蔽其脚本即不生效，亦无碍翻阅。
             </span>
           </li>
           <li className="flex gap-2.5">
             <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold-600" />
             <span>
-              溯源水印由访客 IP、当地日期与站名即时拼出，仅用于内容外泄时辨其来源，
+              溯源水印由脱敏后的访客 IP（仅存前两段）、当地日期与站名即时拼出，仅用于内容外泄时辨其来源，
               不写入数据库、不落日志。
             </span>
           </li>
@@ -167,7 +167,7 @@ export default function About() {
             </a>
           </p>
           <Note label="提示">
-            点击邮箱地址会调起你系统里默认的邮件应用。若没有反应，说明设备上未设置默认邮件客户端，可先复制地址再从网页版邮箱发送。
+            点击邮箱地址将调用设备默认邮件客户端；如未响应，请复制地址后通过网页邮箱发送。
           </Note>
         </div>
       </section>

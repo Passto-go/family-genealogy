@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react"
 import { useSearchParams } from "react-router-dom"
 import { Loader2 } from "lucide-react"
 import { ReactFlow, type Node } from "@xyflow/react"
+/* 谱页是独立路由，冷启动（直接打开 /print 或另存 PDF）时若没先访问世系图，
+   画布就没有 React Flow 的定位样式，节点会全部溢出纸面、看起来「整页空白」。 */
+import "@xyflow/react/dist/style.css"
 import { UnlockPanel } from "@/components/site/UnlockPanel"
 import { MemberNode } from "@/components/tree/MemberNode"
 import { SuMemberNode } from "@/components/tree/SuMemberNode"
