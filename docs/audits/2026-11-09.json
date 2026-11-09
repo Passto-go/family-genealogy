@@ -1,0 +1,56 @@
+{
+  "date": "2026-11-09",
+  "scope": "本地仓复扫（低危）：构建前置约定、部署脚本可执行性、前端渲染容错、年份解析健壮性、错误信息外泄、文档与实现一致性",
+  "found": {
+    "total": 8,
+    "high": 0,
+    "medium": 0,
+    "low": 8
+  },
+  "fixedCount": 8,
+  "categories": [
+    {
+      "name": "构建前置约定缺失（Node 版本未声明）",
+      "severity": "低",
+      "count": 1
+    },
+    {
+      "name": "部署脚本缺少可执行位",
+      "severity": "低",
+      "count": 1
+    },
+    {
+      "name": "前端缺少全局错误边界",
+      "severity": "低",
+      "count": 1
+    },
+    {
+      "name": "年份解析健壮性（空串被当作 0）",
+      "severity": "低",
+      "count": 1
+    },
+    {
+      "name": "5xx 错误原文透传前端",
+      "severity": "低",
+      "count": 1
+    },
+    {
+      "name": "文档与实现不一致（README）",
+      "severity": "低",
+      "count": 1
+    },
+    {
+      "name": "部署文档缺少回滚与日志指引",
+      "severity": "低",
+      "count": 1
+    },
+    {
+      "name": "开发态 lint 误扫公开仓导出目录",
+      "severity": "低",
+      "count": 1
+    }
+  ],
+  "plannedFixDate": "2026-11-09",
+  "actualFixDate": "2026-11-09",
+  "note": "复扫新增批次，8 项已全部修复。另记录 3 项留待评估：审计 JSON 与报告的低危口径差异、审计导出 100000 上限改流式、开发态 CORS 与 preview 代理重复。仓库内 40 项存量 lint 错误（react-hooks / react-refresh 等）并入组件重构批次处理。"
+}

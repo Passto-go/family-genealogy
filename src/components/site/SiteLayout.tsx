@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { Link, Outlet } from "react-router-dom"
 import { ArrowLeft, Loader2, ShieldAlert } from "lucide-react"
 import { useTenant } from "@/lib/tenant-context"
@@ -49,7 +50,16 @@ export function SiteLayout() {
       <Watermark />
       <SiteHeader variant="family" />
       <main className="flex-1">
-        <Outlet />
+        {/* 页面按需加载：只在内容区等，页头与页脚保持不动 */}
+        <Suspense
+          fallback={
+            <div className="flex min-h-[40vh] items-center justify-center">
+              <Loader2 className="size-4 animate-spin text-ink-300" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
       <SiteFooter
         icpNumber={family?.icpNumber}

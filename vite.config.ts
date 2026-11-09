@@ -28,6 +28,18 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // React 全家桶单独成包：升级业务代码时这部分哈希不变，可长期走缓存
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return
+          if (id.includes("react-router")) return "vendor-react"
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "vendor-react"
+        },
+      },
+    },
+  },
   preview: {
     port:4175,
     // M-10：预览服务器不为 /api 注入通配 CORS（/api 经同源代理，无需通配；避免误用 preview 承载生产时削弱同源假设）

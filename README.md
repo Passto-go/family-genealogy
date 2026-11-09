@@ -116,10 +116,14 @@ npm run build:demo    # 构建到 dist-demo/，按子路径 /family-genealogy/ �
 | 命令 | 说明 |
 | --- | --- |
 | `npm run dev` | 前端与接口同时启动 |
-| `npm run build` | 生产构建 |
+| `npm run dev:api` | 只启动接口（tsx watch） |
+| `npm run dev:web` | 只启动前端（Vite） |
+| `npm run build` | 生产构建（先跑审计数据生成） |
 | `npm start` | 生产模式运行 |
 | `npm run lint` | ESLint 检查 |
 | `npm run preview` | 预览构建产物 |
+| `npm run audit:sync` | 由 `docs/audits/*.json` 重新生成前台安全检查数据 |
+| `npm run audit:generation` | 批量校正族人世次（`scripts/fix-member-generation.mjs`） |
 
 ## 目录结构
 
@@ -131,16 +135,25 @@ src/admin/         后台：家族、成员、反馈、域名、站点、管理�
 src/lib/           接口封装、租户上下文、访问门禁、导入导出
 src/components/    UI 组件、世系树节点与布局算法
 deploy/            自托管相关脚本：证书签发与续期、源码打包、管理员密码重置
-docs/prototypes/   世系图与谱页的静态版式原型（数据为虚构）
+  cert-manager/    ACME 证书签发、续期与 Nginx 443 模板
+docs/              审计报告、维护日志、世系图与谱页原型（数据为虚构）
+docs/prototypes/   世系图与谱页的静态版式原型
+scripts/           构建期工具：审计数据生成、世次校正、公开仓导出
 ```
 
 ## 路线图
 
 以下能力尚未实现，仅记录方向：
 
-- 访问统计：当前不采集任何访问数据。计划接入境内统计服务，默认关闭，由部署者自行开启
+- 访问统计：已支持通过 `VITE_BAIDU_ANALYTICS_ID` 在构建期接入境内统计服务，默认不加载任何统计脚本
 - 小程序与第三方客户端：接口侧计划支持 Bearer 令牌鉴权
 - 世系图与谱页版式：仍在调整，`docs/prototypes/` 下是用于对比的静态原型
+
+## 安全与审计
+
+- 审计报告：`docs/security-audit-report.md`（危害分级、已修复项、复测建议）
+- 维护记录：`docs/maintenance-log.md`
+- 复测数据：`docs/audits/*.json`，执行 `npm run audit:sync` 同步到前台「安全检查」页
 
 ## 参与方式
 

@@ -10,6 +10,17 @@ export function cnYear(value: string | undefined): string {
 }
 
 /**
+ * 取年份数值，仅接受纯数字（去掉首尾空白）。
+ * 用于享寿计算等算数场景：空串、非数字、超出四位一律返回 null，避免 Number("") = 0 被当成有效年份。
+ */
+export function yearValue(value: string | undefined): number | null {
+  const text = (value ?? "").trim()
+  if (!/^\d{1,4}$/.test(text)) return null
+  const year = Number(text)
+  return year > 0 ? year : null
+}
+
+/**
  * 移动端流式预览、欧苏谱共用的简版小传。
  *
  * 子女一律按**全量谱系**统计（调用方传 allChildrenOf），不按当前可见集合：

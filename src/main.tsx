@@ -5,11 +5,14 @@ import "./index.css"
 import "./styles/print.css"
 import "./styles/sushi.css"
 import App from "./App"
+import { ErrorBoundary } from "./components/ErrorBoundary"
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ErrorBoundary>
   </StrictMode>,
 )

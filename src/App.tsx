@@ -1,32 +1,48 @@
-import { useEffect } from "react"
+import { lazy, Suspense, useEffect } from "react"
 import { Link, Navigate, Route, Routes } from "react-router-dom"
 import { fetchSiteName, useSiteName } from "@/lib/site-config"
 import { SiteLayout } from "@/components/site/SiteLayout"
 import { PublicLayout } from "@/components/site/PublicLayout"
 import Portal from "@/pages/Portal"
-import Home from "@/pages/Home"
-import Genealogy from "@/pages/Genealogy"
-import PrintPage from "@/pages/PrintPage"
-import Literature from "@/pages/Literature"
-import Feedback from "@/pages/Feedback"
-import Privacy from "@/pages/Privacy"
-import Terms from "@/pages/Terms"
-import About from "@/pages/About"
 import AdminLayout from "@/admin/AdminLayout"
-import Login from "@/admin/Login"
-import ChangePassword from "@/admin/ChangePassword"
-import Dashboard from "@/admin/Dashboard"
-import FamilyList from "@/admin/FamilyList"
-import FamilyForm from "@/admin/FamilyForm"
-import MemberList from "@/admin/MemberList"
-import MemberForm from "@/admin/MemberForm"
-import Account from "@/admin/Account"
-import SiteSettings from "@/admin/SiteSettings"
-import MfaSetup from "@/admin/MfaSetup"
-import SubmissionList from "@/admin/SubmissionList"
-import AdminList from "@/admin/AdminList"
-import AuditLog from "@/admin/AuditLog"
-import Domains from "@/admin/Domains"
+
+/**
+ * 路由级按需加载：门户与两套布局保持同步加载（首屏与导航立即渲染），
+ * 其余页面各自成为独立 chunk，进哪个页面才拉哪份代码。
+ * 世系图、谱页、族人表单是主要受益者。
+ */
+const Home = lazy(() => import("@/pages/Home"))
+const Genealogy = lazy(() => import("@/pages/Genealogy"))
+const PrintPage = lazy(() => import("@/pages/PrintPage"))
+const Literature = lazy(() => import("@/pages/Literature"))
+const Feedback = lazy(() => import("@/pages/Feedback"))
+const Privacy = lazy(() => import("@/pages/Privacy"))
+const Terms = lazy(() => import("@/pages/Terms"))
+const About = lazy(() => import("@/pages/About"))
+
+const Login = lazy(() => import("@/admin/Login"))
+const ChangePassword = lazy(() => import("@/admin/ChangePassword"))
+const MfaSetup = lazy(() => import("@/admin/MfaSetup"))
+const Dashboard = lazy(() => import("@/admin/Dashboard"))
+const FamilyList = lazy(() => import("@/admin/FamilyList"))
+const FamilyForm = lazy(() => import("@/admin/FamilyForm"))
+const MemberList = lazy(() => import("@/admin/MemberList"))
+const MemberForm = lazy(() => import("@/admin/MemberForm"))
+const Account = lazy(() => import("@/admin/Account"))
+const SiteSettings = lazy(() => import("@/admin/SiteSettings"))
+const SubmissionList = lazy(() => import("@/admin/SubmissionList"))
+const AdminList = lazy(() => import("@/admin/AdminList"))
+const AuditLog = lazy(() => import("@/admin/AuditLog"))
+const Domains = lazy(() => import("@/admin/Domains"))
+
+/** 路由切换时的占位：只占位不闪烁，骨架保持页面底色 */
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center bg-paper-50">
+      <p className="text-[12px] tracking-[0.2em] text-muted-foreground">载入中</p>
+    </div>
+  )
+}
 import { AuthProvider } from "@/lib/admin-context"
 import { FamilyProvider } from "@/lib/family-context"
 import { TenantProvider } from "@/lib/tenant-context"
@@ -66,7 +82,8 @@ export default function App() {
       <SiteNameSync />
       <FamilyProvider>
         <ThemeModeProvider>
-          <Routes>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
           {/* 门户：公开族谱总目 */}
           <Route index element={<Portal />} />
 
@@ -158,7 +175,8 @@ export default function App() {
           </Route>
 
           <Route path="*" element={<NotFound />} />
-        </Routes>
+            </Routes>
+          </Suspense>
         </ThemeModeProvider>
       </FamilyProvider>
     </AuthProvider>

@@ -2,9 +2,12 @@ import type { Edge, Node } from "@xyflow/react"
 import type { Member } from "@/lib/types"
 import { computeDisplayLineageIds, computeExtendedLineageIds } from "@/lib/types"
 
-export const NODE_WIDTH = 200
-export const NODE_HEIGHT = 96
-export const H_GAP = 26
+/* 卡片宽 216：200 的基准下「头像 44 + 配偶列 46 + 内边距 24」只剩 84px 给正文，
+   姓名/字号较长时被截；216 配 40/36/20 后正文列 118px，与谱页卡片谱大致齐平。 */
+export const NODE_WIDTH = 216
+/* 110：容纳「世代 + 姓名 + 字 + 生卒」四行（最小字号 12px 时约需 108px） */
+export const NODE_HEIGHT = 110
+export const H_GAP = 22
 export const V_GAP = 62
 
 export interface MemberNodeData extends Record<string, unknown> {

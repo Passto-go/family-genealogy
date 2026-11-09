@@ -10,7 +10,7 @@ import {
   type Family,
   type Member,
 } from "@/lib/types"
-import { buildMemberMemo, cnYear } from "./memberMemo"
+import { buildMemberMemo, cnYear, yearValue } from "./memberMemo"
 
 /**
  * 谱页两种纸面版面。
@@ -102,8 +102,10 @@ function buildEuroMemo(
   if (birth) push(`生于${birth}年`)
   if (death) push(`卒于${death}年`)
   if (birth && death) {
-    const span = Number(member.deathYear) - Number(member.birthYear)
-    if (Number.isFinite(span) && span > 0) push(`享寿${toChineseNumber(span)}岁`)
+    const birthYear = yearValue(member.birthYear)
+    const deathYear = yearValue(member.deathYear)
+    const span = birthYear != null && deathYear != null ? deathYear - birthYear : null
+    if (span != null && span > 0) push(`享寿${toChineseNumber(span)}岁`)
   }
   if (member.burialPlace) push(`葬${member.burialPlace}`)
   if (member.spouseId != null) {
