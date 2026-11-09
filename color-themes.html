@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>配色方案预览 · 方案 B / C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* 站点真实色板（与 tailwind.config.js / index.css 一致） */
+    --paper:#FBFAF7; --paper-100:#F6F3EC; --paper-200:#EFEAE0; --paper-300:#E2DDD2; --paper-400:#CFC8B9;
+    --ink:#12303B; --ink-700:#173A47; --ink-600:#1E4859; --ink-400:#4C7F92; --ink-300:#7EA0AE; --ink-100:#DCE6EA;
+    --gold:#A8863F; --gold-700:#8F7134; --gold-500:#BFA062; --gold-200:#E7D9BC; --gold-100:#F3EBD9;
+    --seal:#9C4A34; --seal-700:#83372A; --seal-100:#F5E4DF;
+    /* 小字（标签/提示）默认取当前线上值 */
+    --muted:#5F7177;
+    --hint-size:11px; --hint-spacing:.2em;
+    --radius:2px;
+    --song:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+    --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper-100);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+
+  header{padding:26px 32px 18px;border-bottom:1px solid #ddd2bd;background:var(--paper)}
+  h1{margin:0;font-family:var(--song);font-size:21px;letter-spacing:.12em}
+  .lead{margin:9px 0 0;font-size:13px;color:#6b7a80;line-height:1.9;max-width:920px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:26px 32px 8px}
+  @media (max-width:920px){ .grid{grid-template-columns:1fr} }
+
+  .col-head{margin-bottom:14px}
+  .col-title{font-family:var(--song);font-size:17px;letter-spacing:.12em;color:var(--ink)}
+  .tag{display:inline-block;font-size:10.5px;letter-spacing:.08em;padding:2px 8px;border-radius:2px;margin-left:8px;vertical-align:middle}
+  .tag-b{background:var(--ink-100);color:var(--ink-600)}
+  .tag-c{background:var(--seal-100);color:var(--seal-700)}
+  .col-sub{margin-top:6px;font-size:12px;line-height:1.8;color:#6b7a80}
+
+  /* ── 通用 mock 组件（两套方案共用结构，仅配色/装饰不同） ── */
+  .frame{background:var(--paper);border:1px solid var(--paper-300);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;gap:18px;box-shadow:0 1px 2px rgba(12,33,41,.04),0 8px 24px -12px rgba(12,33,41,.12);position:relative}
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand-text{display:flex;flex-direction:column}
+  .site-name{font-family:var(--song);font-size:22px;letter-spacing:.14em;color:var(--ink)}
+  .login-sub{font-size:12px;letter-spacing:.2em;color:var(--muted);margin-top:4px}
+  .seal-stamp{display:none;width:44px;height:44px;border-radius:6px;background:var(--seal);color:#fff;font-family:var(--song);font-size:24px;align-items:center;justify-content:center;transform:rotate(-4deg);box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}
+
+  .card{border:1px solid var(--paper-200);border-radius:var(--radius);padding:16px 18px;background:#fff}
+  .card-title{font-family:var(--song);font-size:16px;letter-spacing:.14em;color:var(--ink);margin-bottom:14px;border-left:3px solid var(--ink-400);padding-left:10px}
+
+  .field{display:block;margin-bottom:12px}
+  .field-label{display:block;font-size:var(--hint-size);letter-spacing:var(--hint-spacing);color:var(--muted);margin-bottom:6px}
+  .input{width:100%;height:38px;border:1px solid var(--paper-300);background:#fff;padding:0 12px;font-size:13px;color:var(--ink);border-radius:var(--radius)}
+  .input.code{letter-spacing:.4em;display:flex;align-items:center}
+
+  .btn-primary{width:100%;height:40px;background:var(--ink);color:var(--paper);border:none;font-size:13px;letter-spacing:.2em;border-radius:var(--radius);cursor:pointer}
+  .btn-primary.sm{width:auto;padding:0 16px;height:34px;font-size:12px}
+
+  .hint{font-size:var(--hint-size);letter-spacing:var(--hint-spacing);line-height:1.9;color:var(--muted);margin-top:10px}
+
+  .sec-head{font-family:var(--song);font-size:15px;letter-spacing:.14em;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .sec-dot{width:8px;height:8px;background:var(--ink-400);border-radius:1px}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px dashed var(--paper-200)}
+  .kv .k{color:var(--muted);letter-spacing:.04em}
+  .kv .v{color:var(--ink)}
+  .kv .v.ok{color:var(--ink-600)}
+
+  .mfa{margin-top:14px;padding:14px;border:1px solid var(--paper-200);border-radius:var(--radius)}
+  .mfa-head{font-family:var(--song);font-size:14px;letter-spacing:.12em;color:var(--ink);margin-bottom:8px}
+  .mfa-desc{font-size:var(--hint-size);letter-spacing:var(--hint-spacing);line-height:1.9;color:var(--muted);margin-bottom:12px}
+  .mfa-body{display:flex;gap:16px;align-items:center}
+  .qr{width:108px;height:108px;border:1px solid var(--paper-300);background:#fff;flex:none}
+  .mfa-side{display:flex;flex-direction:column;gap:8px}
+
+  /* ── 方案 B：仅增强可读性（小字对比度加深、字号 11→12.5px、字距收紧） ── */
+  .opt-b{ --muted:#3F5056; --hint-size:12.5px; --hint-spacing:.04em; }
+
+  /* ── 方案 C：更浓国风（朱红描边/印章、金线点缀、匾额式标题） ── */
+  .opt-c{ --muted:#4A5B61; }
+  .opt-c .frame{ border:2px solid var(--seal); box-shadow:0 0 0 4px var(--paper-100),0 12px 30px -12px rgba(18,48,59,.22); background:radial-gradient(circle at 82% 4%,rgba(168,134,63,.07),transparent 42%),var(--paper); }
+  .opt-c .frame::after{ content:""; position:absolute; inset:5px; border:1px solid var(--gold); pointer-events:none; }
+  .opt-c .seal-stamp{ display:flex; }
+  .opt-c .brand{ background:var(--ink); border:2px solid var(--gold); border-radius:var(--radius); padding:14px 18px; }
+  .opt-c .site-name{ color:var(--gold-200); }
+  .opt-c .login-sub{ color:var(--gold-100); opacity:.85; }
+  .opt-c .card-title{ color:var(--seal-700); border-left-color:var(--seal); }
+  .opt-c .sec-head{ color:var(--seal-700); border-left:3px solid var(--seal); padding-left:10px; }
+  .opt-c .sec-dot{ background:var(--seal); }
+  .opt-c .sec-head::after{ content:""; flex:1; height:1px; background:linear-gradient(to right,var(--gold),transparent); margin-left:6px; }
+  .opt-c .mfa{ border-left:3px solid var(--seal); background:var(--seal-100); }
+  .opt-c .btn-primary{ box-shadow:inset 0 -3px 0 var(--gold); }
+
+  .note{padding:8px 32px 56px;max-width:1000px}
+  .note h2{font-family:var(--song);font-size:16px;letter-spacing:.1em;margin:24px 0 10px}
+  .note table{width:100%;border-collapse:collapse;font-size:12.5px;line-height:1.8}
+  .note th,.note td{border:1px solid #ddd2bd;padding:9px 12px;text-align:left;vertical-align:top}
+  .note th{background:var(--paper);font-weight:600}
+  .rec{background:#fbf6ea;border:1px solid #e6d3ad;padding:14px 18px;border-radius:4px;font-size:13px;line-height:1.9}
+</style>
+</head>
+<body>
+<header>
+  <h1>登录与账户 · 配色方案预览（B / C）</h1>
+  <p class="lead">下方为「后台登录页 + 账户设置（登录验证器）」在两种方案下的观感对比，均基于站点真实色板（宣纸白 · 墨青 · 朱印 · 金）。评估用静态预览，<b>未改动任何线上代码</b>。左右同屏对照，便于你确认是否调整及选哪一版。</p>
+</header>
+
+<div class="grid">
+  <section class="col">
+    <div class="col-head">
+      <div class="col-title">方案 B · 可读性增强<span class="tag tag-b">≈ 当前线上</span></div>
+      <div class="col-sub">保持现有四色与版式几乎不变；仅把小字（标签/提示）对比度加深、字号 11→12.5px、字距由 .2em 收紧到 .04em，让年长用户更易读。</div>
+    </div>
+    <div id="frameB"></div>
+  </section>
+
+  <section class="col">
+    <div class="col-head">
+      <div class="col-title">方案 C · 更浓国风<span class="tag tag-c">装饰加码</span></div>
+      <div class="col-sub">在现有四色上加强传统质感：朱红描边与印章、金线内框（回字纹）、匾额式标题、验证器区朱红侧栏。层级与品牌感更强，但视觉更「重」。</div>
+    </div>
+    <div id="frameC"></div>
+  </section>
+</div>
+
+<div class="note">
+  <h2>两版差异速览</h2>
+  <table>
+    <tr><th style="width:16%">维度</th><th style="width:42%">方案 B（可读性增强）</th><th style="width:42%">方案 C（更浓国风）</th></tr>
+    <tr><td>配色</td><td>不变（宣纸白 / 墨青 / 朱印 / 金）</td><td>不变，但朱红、金的使用面显著加大</td></tr>
+    <tr><td>小字可读性</td><td>提升（对比度↑、字号↑、字距↓）</td><td>略提升，重点不在可读性</td></tr>
+    <tr><td>装饰</td><td>几乎无新增，保持克制</td><td>朱红描边、印章、金线内框、匾额标题</td></tr>
+    <tr><td>气质</td><td>文人素净，贴近当前</td><td>宗祠/匾额感，传统更浓</td></tr>
+    <tr><td>风险</td><td>极低，纯微调</td><td>装饰元素需在各页面统一落地，维护成本略高</td></tr>
+  </table>
+  <h2>说明</h2>
+  <div class="rec">
+    两个方案都<b>不推翻现有色板</b>——核心的「宣纸 + 墨青 + 朱印 + 金」语言保持不变。B 是低风险微调，C 是在此之上加码传统装饰。<br/>
+    预览为静态评估页，仅用真实色值还原观感；是否落地、落地哪一版，等你确认。若选 C，我会把印章/金线/匾额等装饰抽成可复用的小组件，保证后台各页一致。
+  </div>
+</div>
+
+<template id="tpl">
+  <div class="frame">
+    <div class="brand">
+      <div class="seal-stamp">譜</div>
+      <div class="brand-text">
+        <div class="site-name">家族族譜</div>
+        <div class="login-sub">世系昭穆 · 一脉相承</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">登录</div>
+      <form class="form" onsubmit="return false">
+        <label class="field">
+          <span class="field-label">账号</span>
+          <input class="input" value="admin" />
+        </label>
+        <label class="field">
+          <span class="field-label">密码</span>
+          <input class="input" type="password" value="••••••••" />
+        </label>
+        <button class="btn-primary" type="submit">登 录</button>
+        <p class="hint">请输入管理员账号与密码；已启用登录验证器者，验证动态码后进入后台。</p>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="sec-head"><span class="sec-dot"></span>账户设置</div>
+      <div class="kv"><span class="k">角色</span><span class="v">超级管理员</span></div>
+      <div class="kv"><span class="k">验证器</span><span class="v ok">已启用 TOTP</span></div>
+
+      <div class="mfa">
+        <div class="mfa-head">登录验证器</div>
+        <p class="mfa-desc">启用后，登录除密码外还需输入验证器 App（如 Google Authenticator、1Password）中的 6 位动态码，可显著提升账号安全性。超级管理员必须启用。</p>
+        <div class="mfa-body">
+          <div class="qr" aria-label="二维码占位"></div>
+          <div class="mfa-side">
+            <span class="field-label">动态码</span>
+            <div class="input code">······</div>
+            <button class="btn-primary sm" type="button">确认启用</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  const tpl = document.getElementById("tpl");
+  for (const [sel, opt] of [["#frameB", "opt-b"], ["#frameC", "opt-c"]]) {
+    const host = document.querySelector(sel);
+    const node = tpl.content.cloneNode(true);
+    node.querySelector(".frame").classList.add(opt);
+    host.appendChild(node);
+  }
+  function drawQR(el) {
+    const N = 23, cell = 6, pad = 6, size = N * cell + pad * 2;
+    let s = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg"><rect width="${size}" height="${size}" fill="#fff"/>`;
+    let seed = 987654321;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return (seed >> 16) & 1; };
+    const finder = (x, y) => {
+      s += `<rect x="${pad + x * cell}" y="${pad + y * cell}" width="${7 * cell}" height="${7 * cell}" fill="#12303B"/>`;
+      s += `<rect x="${pad + (x + 1) * cell}" y="${pad + (y + 1) * cell}" width="${5 * cell}" height="${5 * cell}" fill="#fff"/>`;
+      s += `<rect x="${pad + (x + 2) * cell}" y="${pad + (y + 2) * cell}" width="${3 * cell}" height="${3 * cell}" fill="#12303B"/>`;
+    };
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const inF = (x < 8 && y < 8) || (x > N - 9 && y < 8) || (x < 8 && y > N - 9);
+      if (inF) continue;
+      if (rnd()) s += `<rect x="${pad + x * cell}" y="${pad + y * cell}" width="${cell}" height="${cell}" fill="#12303B"/>`;
+    }
+    finder(0, 0); finder(N - 7, 0); finder(0, N - 7);
+    s += "</svg>";
+    el.innerHTML = s;
+  }
+  document.querySelectorAll(".qr").forEach(drawQR);
+</script>
+</body>
+</html>
