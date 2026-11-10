@@ -105,7 +105,7 @@ export function MemberSheet({ member, members, onOpenChange, onNavigate, showExt
                   <div className="min-w-0 flex-1">
                     <SheetDescription className="text-[10px] tracking-[0.3em] text-paper-50/45">
                       {generationLabel(member.generation)}
-                      {member.branch ? `　·　${member.branch}` : ""}
+                      {member.branch ? "　·　" + member.branch : ""}
                     </SheetDescription>
                     <h2 className="mt-2 truncate font-song text-[30px] leading-tight tracking-[0.1em] text-paper-50">
                       {member.name}

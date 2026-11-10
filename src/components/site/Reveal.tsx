@@ -14,15 +14,13 @@ export function Reveal({
   delay?: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [shown, setShown] = useState(false)
+  // 无 IntersectionObserver 的环境（老浏览器 / 预渲染）直接按已显示处理，避免首次绘制前多跑一轮渲染
+  const [shown, setShown] = useState(() => typeof IntersectionObserver === "undefined")
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    if (typeof IntersectionObserver === "undefined") {
-      setShown(true)
-      return
-    }
+    if (typeof IntersectionObserver === "undefined") return
     const io = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {

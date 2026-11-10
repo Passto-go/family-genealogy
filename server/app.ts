@@ -9,6 +9,7 @@ import {
   createPreAuthToken,
   readPreAuthToken,
   generateTotpSecret,
+  generateAccessPassword,
   buildOtpauthUri,
   verifyTotp,
   encryptSecret,
@@ -627,19 +628,16 @@ const FAMILY_TEXT_FIELDS = [
   "policeNumber",
 ] as const
 
-// 仅超级管理员可改的家族敏感字段：标识 / 前台展示 / 访问信息 / 派系房支 / 备案号
+// 仅超级管理员可改的家族敏感字段：前台展示 / 主谱 / 派系房支 / 备案号 / 站点主题
+// 注：标识与访问栏目（slug / tag / 访问方式）已开放给普通管理员（editor），故不在此列；
+// 访问方式中的「仅管理员」仍由下面的 visibility 专用守卫限定为超管可设；
+// 字辈起始世次（generationPoemStart）也已放开给普通管理员。
 const SENSITIVE_FAMILY_KEYS = [
-  "slug",
-  "tag",
-  "visibility",
   "isPrimary",
   "isPublished",
-  "printIncludeExtended",
-  "password",
   "branches",
   "branchHeads",
   "theme",
-  "generationPoemStart",
   "domain",
   "icpNumber",
   "policeNumber",
@@ -648,7 +646,6 @@ const SENSITIVE_FAMILY_KEYS = [
 // 比较请求字段与当前值是否一致；普通管理员保存时会带全量字段，
 // 故仅当敏感字段「被改动」时才拦截，未改动则随正文一并提交而不受影响。
 function isFamilyFieldUnchanged(key: string, value: unknown, current: Family): boolean {
-  if (key === "password") return !str(value) // 空口令表示不修改
   if (key === "branches") {
     return (
       JSON.stringify(current.branches ?? []) ===
@@ -657,16 +654,9 @@ function isFamilyFieldUnchanged(key: string, value: unknown, current: Family): b
   }
   if (key === "branchHeads") {
     // 归一化（去空白 / 仅保留有效数字键 / 键序无关）后比较，普通管理员未改房主时可正常保存
-    const incoming: Record<string, number> = {}
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      for (const [name, id] of Object.entries(value as Record<string, unknown>)) {
-        const num = Number(id)
-        if (name.trim() && Number.isFinite(num) && num > 0) incoming[name.trim()] = Math.floor(num)
-      }
-    }
     const stable = (record: Record<string, number>) =>
       JSON.stringify(Object.keys(record).sort().map((k) => [k, record[k]]))
-    return stable(incoming) === stable(current.branchHeads ?? {})
+    return stable(parseBranchHeads(value)) === stable(current.branchHeads ?? {})
   }
   if (key === "isPrimary" || key === "isPublished" || key === "printIncludeExtended") {
     return Boolean((current as unknown as Record<string, unknown>)[key]) === Boolean(value)
@@ -685,6 +675,21 @@ function parseBranchRenames(value: unknown): [string, string][] {
     if (from && to && from !== to) result.push([from, to])
   }
   return result.slice(0, 100)
+}
+
+/**
+ * 房支房主映射（房名 → 房主成员 id）。创建与更新共用同一套归一化规则：
+ * 房名去首尾空白后非空、房主 id 为有效正整数，非法项直接丢弃。
+ */
+function parseBranchHeads(value: unknown): Record<string, number> {
+  const heads: Record<string, number> = {}
+  if (!value || typeof value !== "object" || Array.isArray(value)) return heads
+  for (const [name, raw] of Object.entries(value as Record<string, unknown>)) {
+    const num = Number(raw)
+    const trimmed = name.trim()
+    if (trimmed && Number.isFinite(num) && num > 0) heads[trimmed] = Math.floor(num)
+  }
+  return heads
 }
 
 function baseFamilyInput(body: Record<string, unknown>): FamilyInput {
@@ -722,7 +727,7 @@ function baseFamilyInput(body: Record<string, unknown>): FamilyInput {
     branches: Array.isArray(body.branches)
       ? body.branches.filter((item): item is string => typeof item === "string")
       : [],
-    branchHeads: {},
+    branchHeads: parseBranchHeads(body.branchHeads),
     coverImage: safeImageUrl(body.coverImage),
     footerText: str(body.footerText),
     icpNumber: str(body.icpNumber),
@@ -1784,8 +1789,13 @@ export function createApp(repo: Repo, secret: string) {
       throw new HTTPException(400, { message: "该家族标签已存在" })
     }
 
-    const password = str(body.password)
-    input.accessPasswordHash = password ? await hashPassword(password) : ""
+    // 访问口令一律由后台自动生成（不支持手动设置）；仅「密码访问」模式需要口令，
+    // 生成后哈希落库、明文仅当次返回给超管分发，杜绝自设弱口令被在线爆破。
+    let accessPassword: string | null = null
+    if (input.visibility === "password") {
+      accessPassword = generateAccessPassword()
+      input.accessPasswordHash = await hashPassword(accessPassword)
+    }
     if (existing.length === 0) input.isPrimary = true
 
     const id = await repo.createFamily(input, session.uid)
@@ -1797,9 +1807,9 @@ export function createApp(repo: Repo, secret: string) {
       action: "FAMILY_CREATE",
       targetType: "family",
       targetId: String(id),
-      detail: JSON.stringify({ slug: input.slug, tag: input.tag }),
+      detail: JSON.stringify({ slug: input.slug, tag: input.tag, visibility: input.visibility }),
     })
-    return c.json({ id }, 201)
+    return c.json({ id, ...(accessPassword ? { accessPassword } : {}) }, 201)
   })
 
   // 家族写入：超级管理员（可改标识/访问/房支等配置）或具备族人维护能力者（仅可改正文）均可通过
@@ -1824,7 +1834,7 @@ export function createApp(repo: Repo, secret: string) {
     const current = c.get("family")!
 
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
-    // 标识 / 访问信息 / 派系房支 / 备案号：仅超级管理员可修改。
+    // 前台展示 / 主谱 / 派系房支 / 备案号：仅超级管理员可修改。
     // 普通管理员每次保存都会带全量字段，因此仅拦截「被改动」的敏感字段，
     // 未改动的敏感字段随正文一起提交也不会被拒绝（保证普通管理员可正常保存正文）。
     if (admin.role !== "super") {
@@ -1833,25 +1843,15 @@ export function createApp(repo: Repo, secret: string) {
       )
       if (changedSensitive.length > 0) {
         throw new HTTPException(403, {
-          message: "标识、前台展示、访问信息与派系房支仅超级管理员可修改",
-        })
-      }
-    }
-
-    // 口令一致性：切换为「密码访问」时，若原本无口令且本次也未填写，会形成无口令的空门禁
-    // （requireTenantAccess 遇到空哈希直接放行），故拒绝保存。
-    // 已设口令的族谱编辑时留空表示「保留原密码」，是合法操作，不在此拦截。
-    // 仅超管可变更访问方式，故限定角色，普通管理员保存正文不受影响。
-    if (admin.role === "super" && "visibility" in body) {
-      const nextVisibility = asVisibility(body.visibility, current.visibility)
-      if (nextVisibility === "password" && !current.accessPasswordHash && !str(body.password)) {
-        throw new HTTPException(400, {
-          message: "切换为密码访问时请设置访问密码；已设置口令的族谱留空即保留原密码",
+          message: "前台展示、主谱与派系房支仅超级管理员可修改",
         })
       }
     }
 
     const patch: Record<string, unknown> = {}
+    // 访问口令自动生成：仅当最终访问方式为「密码访问」且当前无口令时，由后台随机生成。
+    // 明文当次返回给超管分发（不落审计、不支持手动设置），杜绝自设弱口令被在线爆破。
+    let generatedAccessPassword: string | null = null
 
     if ("slug" in body) {
       const slug = str(body.slug).toLowerCase()
@@ -1881,7 +1881,21 @@ export function createApp(repo: Repo, secret: string) {
     }
     // A023：封面图协议白名单（覆盖上面的通用文本赋值）
     if ("coverImage" in body) patch.coverImage = safeImageUrl(body.coverImage)
-    if ("visibility" in body) patch.visibility = asVisibility(body.visibility, current.visibility)
+    if ("visibility" in body) {
+      patch.visibility = asVisibility(body.visibility, current.visibility)
+      // 「仅管理员」访问方式仅超管可设：普通管理员不得切到或切离「仅管理员」
+      if (
+        admin.role !== "super" &&
+        patch.visibility !== current.visibility &&
+        (patch.visibility === "private" || current.visibility === "private")
+      ) {
+        throw new HTTPException(403, { message: "「仅管理员」访问方式仅超级管理员可设置" })
+      }
+    }
+    if (patch.visibility === "password" && !current.accessPasswordHash) {
+      generatedAccessPassword = generateAccessPassword()
+      patch.accessPasswordHash = await hashPassword(generatedAccessPassword)
+    }
     if ("isPrimary" in body) patch.isPrimary = Boolean(body.isPrimary)
     if ("branches" in body) {
       patch.branches = Array.isArray(body.branches)
@@ -1889,17 +1903,7 @@ export function createApp(repo: Repo, secret: string) {
         : []
     }
     // 结构性房支的房主映射（房名 → 房主成员 id）：此前从未接收，导致房主设置无法落库
-    if ("branchHeads" in body) {
-      const raw = body.branchHeads
-      const heads: Record<string, number> = {}
-      if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-        for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
-          const num = Number(value)
-          if (name.trim() && Number.isFinite(num) && num > 0) heads[name.trim()] = Math.floor(num)
-        }
-      }
-      patch.branchHeads = heads
-    }
+    if ("branchHeads" in body) patch.branchHeads = parseBranchHeads(body.branchHeads)
     if ("generationPoemStart" in body) {
       const value = Number(body.generationPoemStart)
       patch.generationPoemStart = Number.isFinite(value) && value > 0 ? Math.floor(value) : 1
@@ -1910,12 +1914,6 @@ export function createApp(repo: Repo, secret: string) {
     if ("printIncludeExtended" in body)
       patch.printIncludeExtended = Boolean(body.printIncludeExtended)
     if ("theme" in body) patch.theme = str(body.theme)
-
-    // 访问口令：仅当提交非空口令时才重新哈希并覆盖。
-    // 留空（或不传）一律表示「保留原密码」，绝不清除已有 accessPasswordHash。
-    if ("password" in body && str(body.password)) {
-      patch.accessPasswordHash = await hashPassword(str(body.password))
-    }
 
     const family = await repo.updateFamily(id, patch, session.uid)
     if (patch.isPrimary === true) await ensureSinglePrimary(repo, id)
@@ -1979,8 +1977,42 @@ export function createApp(repo: Repo, secret: string) {
         ...(branchReconciles.length > 0 ? { branchReconciles } : {}),
       }),
     })
-    return c.json({ family: adminFamily(family) })
+    return c.json({
+      family: adminFamily(family),
+      ...(generatedAccessPassword ? { accessPassword: generatedAccessPassword } : {}),
+    })
   })
+
+  // 重新生成族谱访问口令：口令为后台随机生成、不可手动设置，
+  // 泄露 / 需轮换时触发，返回新口令明文一次，旧口令随即失效。
+  // 权限同「家族写入」：普通管理员仅能轮换本族口令（requireFamilyScope 拦截越权）。
+  app.post(
+    "/api/admin/families/:id/rotate-access-password",
+    familyWriteGuard,
+    requireFamilyScope(resolveFamilyByParam),
+    async (c) => {
+      const session = c.get("session")!
+      const admin = (await repo.getAdminById(session.uid))!
+      const id = Number(c.req.param("id"))
+      if (!Number.isFinite(id)) throw new HTTPException(400, { message: "家族编号无效" })
+      const family = await repo.getFamilyById(id)
+      if (!family) throw new HTTPException(404, { message: "家族不存在" })
+
+      const accessPassword = generateAccessPassword()
+      const accessPasswordHash = await hashPassword(accessPassword)
+      await repo.updateFamily(id, { accessPasswordHash }, session.uid)
+      await repo.appendAuditLog({
+        actorId: session.uid,
+        actorName: session.username,
+        actorRole: admin.role,
+        action: "FAMILY_PASSWORD_ROTATE",
+        targetType: "family",
+        targetId: String(id),
+        detail: JSON.stringify({ slug: family.slug, tag: family.tag }),
+      })
+      return c.json({ accessPassword })
+    },
+  )
 
   // ── 后台：成员（可跨族谱，按 familyId 归属） ──
   app.get("/api/admin/members", authGuard, async (c) => {

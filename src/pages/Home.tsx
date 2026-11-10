@@ -9,30 +9,42 @@ import { api } from "@/lib/api"
 import { RadialChart } from "@/components/tree/RadialChart"
 import { computeVisibleLineageIds, toChineseNumber, type Member } from "@/lib/types"
 
+/** 稳定的空成员列表：避免每次渲染新建数组，导致下游 useMemo 反复失效 */
+const NO_MEMBERS: Member[] = []
+
 export default function Home() {
   const { slug = "" } = useParams<{ slug: string }>()
   const { family, stats, path } = useTenant()
 
-  // 首页全景仅需「名号」，单独按需拉取；密码族谱会 401，静默转为占位，不影响首页其它内容
-  const [panorama, setPanorama] = useState<{
+  // 首页全景仅需「名号」，单独按需拉取；密码族谱会 401，静默转为占位，不影响首页其它内容。
+  // 结果按 slug 标记所属族谱：slug 一变，渲染阶段即回落到 idle，不必在 effect 里同步清空旧数据。
+  const [panoramaData, setPanoramaData] = useState<{
+    slug: string
     state: "idle" | "ready" | "locked"
     members: Member[]
-  }>({ state: "idle", members: [] })
+  }>({ slug: "", state: "idle", members: NO_MEMBERS })
   useEffect(() => {
     let cancelled = false
-    setPanorama({ state: "idle", members: [] })
     api
       .getTenantMembers(slug)
       .then((data) => {
-        if (!cancelled) setPanorama({ state: "ready", members: data.members })
+        if (!cancelled) setPanoramaData({ slug, state: "ready", members: data.members })
       })
       .catch(() => {
-        if (!cancelled) setPanorama({ state: "locked", members: [] })
+        if (!cancelled) setPanoramaData({ slug, state: "locked", members: NO_MEMBERS })
       })
     return () => {
       cancelled = true
     }
   }, [slug])
+
+  const panorama = useMemo(
+    () =>
+      panoramaData.slug === slug
+        ? panoramaData
+        : { slug, state: "idle" as const, members: NO_MEMBERS },
+    [panoramaData, slug],
+  )
 
   // 与世系图共用访客侧的展示范围选择（本地记忆）
   const [showExtended] = useExtendedLineage(family?.id)

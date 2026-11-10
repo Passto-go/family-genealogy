@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, Loader2, Save } from "lucide-react"
+import { ArrowLeft, Copy, Loader2, RefreshCw, Save } from "lucide-react"
 import { ApiError, api } from "@/lib/api"
 import { useAuth } from "@/lib/admin-context"
 import { useFamily } from "@/lib/family-context"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { formatBeijing } from "@/lib/time"
 import {
@@ -98,6 +106,68 @@ function Section({
       </header>
       <div className="space-y-5 px-6 py-5">{children}</div>
     </section>
+  )
+}
+
+/** 统一开关行：标题 + 状态徽标 + 说明 + 右侧开关，供「展示与主谱」「标识与访问」等栏目复用 */
+function ToggleRow({
+  title,
+  statusOn,
+  statusOff,
+  description,
+  checked,
+  disabled,
+  disabledHint,
+  onToggle,
+}: {
+  title: string
+  statusOn: string
+  statusOff: string
+  description: string
+  checked: boolean
+  disabled?: boolean
+  disabledHint?: string
+  onToggle: () => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <p className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] tracking-[0.05em] text-ink-800">
+          <span>{title}</span>
+          <span
+            className={cn(
+              "text-[10.5px] tracking-[0.14em]",
+              checked ? "text-gold-700" : "text-seal-600",
+            )}
+          >
+            {checked ? statusOn : statusOff}
+          </span>
+        </p>
+        <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted-foreground/80">{description}</p>
+        {disabled && disabledHint ? (
+          <p className="mt-1.5 text-[10.5px] text-muted-foreground/70">{disabledHint}</p>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={title}
+        disabled={disabled}
+        onClick={onToggle}
+        className={cn(
+          "relative mt-0.5 h-[20px] w-[36px] shrink-0 rounded-full border transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40",
+          checked ? "border-ink-700 bg-ink-800" : "border-paper-300 bg-paper-200",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-1/2 size-[14px] -translate-y-1/2 rounded-full bg-paper-50 shadow-sm transition-all duration-200",
+            checked ? "left-[18px]" : "left-[2px]",
+          )}
+        />
+      </button>
+    </div>
   )
 }
 
@@ -247,14 +317,13 @@ function toDraft(family: Family): FamilyDraft {
     policeNumber: family.policeNumber,
     isPublished: family.isPublished,
     printIncludeExtended: family.printIncludeExtended,
-    password: "",
   }
 }
 
 const VISIBILITY_HINTS: Record<Visibility, string> = {
   public: "任何人可直接查阅此谱世系。",
-  password: "访客需输入访问密码后方可查阅世系；已设置口令的族谱，编辑时留空即保留原密码。",
-  private: "仅登录的管理员可于后台查阅，前台不展示世系。",
+  password: "访客需输入访问口令后方可查阅世系；口令由系统随机生成，仅生成时展示一次明文。",
+  private: "仅登录的管理员可于后台查阅，前台不展示世系（仅超级管理员可设置）。",
 }
 
 export default function FamilyForm() {
@@ -262,7 +331,7 @@ export default function FamilyForm() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isSuper = user?.role === "super"
-  // 普通管理员：标识 / 访问信息 / 派系房支 仅可查看，不可修改
+  // 普通管理员：前台展示 / 主谱 / 派系房支 仅可查看，不可修改（标识与访问已放开给普通管理员）
   const lockSensitive = !isSuper
   const { families, loading, reload, setFamily, selectFamily } = useFamily()
 
@@ -277,6 +346,12 @@ export default function FamilyForm() {
   const [hasPassword, setHasPassword] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null)
+  // 访问口令由后台自动生成，明文仅当次展示：生成/轮换后弹窗让超管抄存（新建时确认后跳转）
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null)
+  const [showGenerated, setShowGenerated] = useState(false)
+  const [afterGeneratedNav, setAfterGeneratedNav] = useState<string | null>(null)
+  const [rotating, setRotating] = useState(false)
+  const [copied, setCopied] = useState(false)
   // 房主（先祖）下拉所需的族人列表（仅编辑已有族谱时加载）
   const [memberOptions, setMemberOptions] = useState<{ id: number; name: string; generation: number }[]>(
     [],
@@ -399,34 +474,22 @@ export default function FamilyForm() {
       setMessage({ tone: "error", text: "家族标签不能为空" })
       return
     }
-    // 访问口令：留空一律视为「不修改」，已设置口令时合法且保留原密码。
-    // 仅当族谱尚无口令、且本次也未填写新口令时，才要求必填（避免形成无口令的空门禁）。
-    // 普通管理员的口令字段被禁用、无权设置，故不对其做必填拦截，交由后端守卫裁决。
-    const nextPassword = draft.password.trim()
-    if (draft.visibility === "password" && !hasPassword && !nextPassword && !lockSensitive) {
-      setMessage({
-        tone: "error",
-        text: isNew
-          ? "密码访问模式下请设置访问密码"
-          : "切换为密码访问时请设置访问密码；已设置口令的族谱留空即保留原密码",
-      })
-      return
-    }
-    if (nextPassword && nextPassword.length < 6) {
-      setMessage({ tone: "error", text: "访问密码至少 6 位" })
-      return
-    }
-
     setSaving(true)
     setMessage(null)
     try {
       if (isNew) {
-        const { id: newId } = await api.createFamily({ ...draft, password: nextPassword })
+        const { id: newId, accessPassword } = await api.createFamily(draft)
         await reload()
-        navigate(`/admin/families/${newId}`, { replace: true })
+        // 密码访问模式下后台已自动生成访问口令：先弹窗让超管抄存，确认后再跳转到编辑页
+        if (accessPassword) {
+          setGeneratedPassword(accessPassword)
+          setShowGenerated(true)
+          setAfterGeneratedNav(`/admin/families/${newId}`)
+        } else {
+          navigate(`/admin/families/${newId}`, { replace: true })
+        }
         setMessage({ tone: "ok", text: "族谱已建立，可继续录入族人" })
       } else if (familyId) {
-        const { password: _omit, ...rest } = draft
         // 派生改名映射：优先采用焦点捕获的显式改名；若无，则按「表单加载快照 ↔ 当前派系」
         // 的一对一差集推断（删一旧名、加一新名即视为改名）。该推导不依赖焦点捕获，
         // 重挂载 / 刷新也不会丢失改名意图，确保未指定房主、按标签匹配时，更名也能可靠
@@ -446,24 +509,21 @@ export default function FamilyForm() {
           seenFrom.add(f)
           finalRenames.push([f, t])
         }
-        // 仅在填写了新口令时才提交 password；留空不传，后端保留原哈希不变
         const result = await api.updateFamily(familyId, {
-          ...rest,
-          ...(nextPassword ? { password: nextPassword } : {}),
+          ...draft,
           ...(finalRenames.length > 0 ? { branchRenames: finalRenames } : {}),
         })
         setFamily(result.family)
         setHasPassword(result.family.hasPassword)
-        setDraft((prev) => (prev ? { ...prev, password: "" } : prev))
         branchRenamesRef.current = []
         await reload()
+        if (result.accessPassword) {
+          setGeneratedPassword(result.accessPassword)
+          setShowGenerated(true)
+        }
         setMessage({
           tone: "ok",
-          text: nextPassword
-            ? "已保存，访问密码已更新，访客需使用新口令"
-            : hasPassword
-              ? "已保存，原有访问密码保持不变"
-              : "已保存，前台即时生效",
+          text: result.accessPassword ? "已保存，访问口令已自动生成" : "已保存，前台即时生效",
         })
       }
     } catch (error) {
@@ -474,6 +534,41 @@ export default function FamilyForm() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleRotatePassword() {
+    if (!familyId) return
+    setRotating(true)
+    setMessage(null)
+    try {
+      const { accessPassword } = await api.rotateAccessPassword(familyId)
+      setHasPassword(true)
+      setGeneratedPassword(accessPassword)
+      setShowGenerated(true)
+    } catch (error) {
+      setMessage({ tone: "error", text: error instanceof ApiError ? error.message : "口令生成失败" })
+    } finally {
+      setRotating(false)
+    }
+  }
+
+  async function handleCopyPassword() {
+    if (!generatedPassword) return
+    try {
+      await navigator.clipboard.writeText(generatedPassword)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  function closeGenerated() {
+    setShowGenerated(false)
+    setGeneratedPassword(null)
+    const nav = afterGeneratedNav
+    setAfterGeneratedNav(null)
+    if (nav) navigate(nav, { replace: true })
   }
 
   if (crossFamily) {
@@ -548,11 +643,11 @@ export default function FamilyForm() {
 
       {lockSensitive ? (
         <p className="border-l-2 border-gold-600 bg-paper-100 px-3 py-2 text-[12px] text-ink-600">
-          普通管理员仅可维护名号、源流、文献与页脚等内容；「前台展示 / 标识 / 访问信息」与「派系 / 房支」仅超级管理员可修改。
+          普通管理员可维护标识、访问方式、名号、源流、文献与页脚等内容；「前台展示 / 主谱」与「派系 / 房支」仅超级管理员可修改。
         </p>
       ) : (
         <p className="border-l-2 border-ink-600 bg-paper-100 px-3 py-2 text-[12px] text-ink-600">
-          超级管理员可修改全部字段，含标识、访问信息与派系房支。
+          超级管理员可修改全部字段，含前台展示、主谱、标识、访问信息与派系房支。
         </p>
       )}
 
@@ -569,103 +664,35 @@ export default function FamilyForm() {
         </p>
       ) : null}
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Section
-          title="前台展示"
-          description="关闭后门户不列出，直接访问按不存在处理（仅超级管理员可设置）"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] tracking-[0.05em] text-ink-800">
-                <span>在门户公开展示此族谱</span>
-                <span
-                  className={cn(
-                    "text-[10.5px] tracking-[0.14em]",
-                    draft.isPublished ? "text-gold-700" : "text-seal-600",
-                  )}
-                >
-                  {draft.isPublished ? "已开启" : "已关闭"}
-                </span>
-              </p>
-              <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted-foreground/80">
-                开启：门户列出，按下方访问方式查阅；关闭：整部从前台隐藏，后台不受影响。
-              </p>
-              {lockSensitive ? (
-                <p className="mt-1.5 text-[10.5px] text-muted-foreground/70">此项仅超级管理员可修改。</p>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={draft.isPublished}
-              aria-label="是否在门户公开展示此族谱"
-              disabled={lockSensitive}
-              onClick={() => update("isPublished", !draft.isPublished)}
-              className={cn(
-                "relative mt-0.5 h-[20px] w-[36px] shrink-0 rounded-full border transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40",
-                draft.isPublished ? "border-ink-700 bg-ink-800" : "border-paper-300 bg-paper-200",
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-1/2 size-[14px] -translate-y-1/2 rounded-full bg-paper-50 shadow-sm transition-all duration-200",
-                  draft.isPublished ? "left-[18px]" : "left-[2px]",
-                )}
-              />
-            </button>
-          </div>
-        </Section>
+      <Section
+        title="展示与主谱"
+        description="控制族谱在前台的可见性，以及门户 / 登录页的优先展示（仅超级管理员可设置）"
+      >
+        <div className="space-y-4">
+          <ToggleRow
+            title="在门户公开展示此族谱"
+            statusOn="已开启"
+            statusOff="已关闭"
+            description="开启：门户列出，按访问方式查阅；关闭：整部从前台隐藏，后台不受影响。"
+            checked={draft.isPublished}
+            disabled={lockSensitive}
+            disabledHint={lockSensitive ? "此项仅超级管理员可修改。" : undefined}
+            onToggle={() => update("isPublished", !draft.isPublished)}
+          />
+          <ToggleRow
+            title="设为主谱"
+            statusOn="已设为主谱"
+            statusOff="未设为主谱"
+            description="门户与登录页优先展示这部族谱；全站仅一部主谱。"
+            checked={draft.isPrimary}
+            disabled={lockSensitive}
+            disabledHint={lockSensitive ? "主谱唯一，仅超级管理员可设置。" : undefined}
+            onToggle={() => update("isPrimary", !draft.isPrimary)}
+          />
+        </div>
+      </Section>
 
-        <Section
-          title="谱页收录"
-          description="与前台世系图口径一致：开启后收录至孙辈，关闭只记出嫁女子本人（仅超级管理员可设置）"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="flex flex-wrap items-baseline gap-x-2 text-[12.5px] tracking-[0.05em] text-ink-800">
-                <span>排入出嫁女子后裔（外衍）</span>
-                <span
-                  className={cn(
-                    "text-[10.5px] tracking-[0.14em]",
-                    draft.printIncludeExtended ? "text-gold-700" : "text-seal-600",
-                  )}
-                >
-                  {draft.printIncludeExtended ? "已排入" : "不排入"}
-                </span>
-              </p>
-              <p className="mt-1.5 text-[10.5px] leading-relaxed text-muted-foreground/80">
-                开启：续排子女、孙辈两层；关闭：仅收录本族血脉，出嫁女子只记本人。
-              </p>
-              {lockSensitive ? (
-                <p className="mt-1.5 text-[10.5px] text-muted-foreground/70">此项仅超级管理员可修改。</p>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={draft.printIncludeExtended}
-              aria-label="谱页是否排入出嫁女子后裔"
-              disabled={lockSensitive}
-              onClick={() => update("printIncludeExtended", !draft.printIncludeExtended)}
-              className={cn(
-                "relative mt-0.5 h-[20px] w-[36px] shrink-0 rounded-full border transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-40",
-                draft.printIncludeExtended
-                  ? "border-ink-700 bg-ink-800"
-                  : "border-paper-300 bg-paper-200",
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-1/2 size-[14px] -translate-y-1/2 rounded-full bg-paper-50 shadow-sm transition-all duration-200",
-                  draft.printIncludeExtended ? "left-[18px]" : "left-[2px]",
-                )}
-              />
-            </button>
-          </div>
-        </Section>
-      </div>
-
-      <Section title="标识与访问" description="slug 决定前台地址；访问方式决定谁能查阅世系（普通管理员只读）">
+      <Section title="标识与访问" description="slug 决定前台地址；访问方式决定谁能查阅世系">
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField
             label="家族标签"
@@ -673,7 +700,6 @@ export default function FamilyForm() {
             onChange={(value) => update("tag", value)}
             placeholder="如：陈氏"
             hint="用于区分族谱，全站唯一"
-            disabled={lockSensitive}
           />
           <TextField
             label="路径标识 slug"
@@ -681,52 +707,73 @@ export default function FamilyForm() {
             onChange={(value) => update("slug", value.toLowerCase())}
             placeholder="如：chen"
             hint={`前台地址：/t/${draft.slug || "slug"}`}
-            disabled={lockSensitive}
           />
           <label className="block">
             <span className="text-[12.5px] tracking-[0.18em] text-muted-foreground">访问方式</span>
             <select
               value={draft.visibility}
               onChange={(event) => update("visibility", event.target.value as Visibility)}
-              disabled={lockSensitive}
+              disabled={!isSuper && draft.visibility === "private"}
               className="mt-2 h-10 w-full rounded-[8px] border border-paper-300 bg-white px-3 text-[13px] text-ink-800 outline-none focus:border-ink-600 disabled:cursor-not-allowed disabled:bg-paper-100 disabled:text-muted-foreground/70"
             >
-              {(["public", "password", "private"] as Visibility[]).map((value) => (
+              {(isSuper
+                ? (["public", "password", "private"] as Visibility[])
+                : (["public", "password"] as Visibility[])
+              ).map((value) => (
                 <option key={value} value={value}>
                   {VISIBILITY_LABEL[value]}
                 </option>
               ))}
+              {!isSuper && draft.visibility === "private" ? (
+                <option value="private">{VISIBILITY_LABEL.private}</option>
+              ) : null}
             </select>
             <span className="mt-1.5 block text-[10.5px] text-muted-foreground/80">
               {VISIBILITY_HINTS[draft.visibility]}
             </span>
           </label>
-          <TextField
-            label={hasPassword ? "重置访问密码（可选）" : "访问密码"}
-            value={draft.password}
-            onChange={(value) => update("password", value)}
-            placeholder={hasPassword ? "留空则不修改现有密码" : "至少 6 位"}
-            hint={
-              hasPassword
-                ? "已设置访问密码：留空保存即保留原密码不变；填写新口令则立即覆盖，访客需用新口令重新访问。"
-                : draft.visibility === "password"
-                  ? "密码访问模式下必填（至少 6 位）；日后编辑留空即可保留。"
-                  : "可留空；仅「密码访问」模式需要口令。"
-            }
-            disabled={lockSensitive}
-          />
+          <label className="block">
+            <span className="text-[12.5px] tracking-[0.18em] text-muted-foreground">访问口令</span>
+            {draft.visibility === "password" ? (
+              hasPassword ? (
+                <div className="mt-2 flex h-10 items-center justify-between gap-3 rounded-[8px] border border-paper-300 bg-white px-3">
+                  <span className="text-[13px] text-ink-800">已设置（口令由后台随机生成）</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleRotatePassword()}
+                    disabled={rotating}
+                    className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-[6px] border border-paper-300 px-2.5 text-[12px] text-ink-700 transition-colors hover:border-ink-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {rotating ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                    重新生成
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2 flex h-10 items-center rounded-[8px] border border-paper-300 bg-white px-3 text-[13px] text-muted-foreground">
+                  保存时系统会自动生成访问口令。
+                </div>
+              )
+            ) : (
+              <div className="mt-2 flex h-10 items-center rounded-[8px] border border-paper-300 bg-white px-3 text-[13px] text-muted-foreground">
+                {draft.visibility === "private" ? "仅管理员可阅，无需口令。" : "公开访问，无需口令。"}
+              </div>
+            )}
+            {draft.visibility === "password" ? (
+              <span className="mt-1.5 block text-[10.5px] text-muted-foreground/80">
+                口令由系统随机生成，仅生成时展示一次明文；轮换后旧口令即时失效。
+              </span>
+            ) : null}
+          </label>
         </div>
 
-        <label className="flex items-center gap-2.5 text-[12px] text-ink-700">
-          <input
-            type="checkbox"
-            checked={draft.isPrimary}
-            onChange={(event) => update("isPrimary", event.target.checked)}
-            disabled={lockSensitive}
-            className="size-3.5 disabled:cursor-not-allowed"
-          />
-          设为主谱（门户与登录页优先展示）
-        </label>
+        <ToggleRow
+          title="排入出嫁女子后裔（外衍）"
+          statusOn="已排入"
+          statusOff="不排入"
+          description="开启：出嫁女子的后裔续排子女、孙辈两层，纳入世系图与谱页；关闭：仅收录本族血脉，出嫁女子只记本人。"
+          checked={draft.printIncludeExtended}
+          onToggle={() => update("printIncludeExtended", !draft.printIncludeExtended)}
+        />
       </Section>
 
       <Section title="名号" description="用于导航、标题与题识">
@@ -953,6 +1000,41 @@ export default function FamilyForm() {
           {isNew ? "建立族谱" : "保存修改"}
         </button>
       </div>
+
+      <Dialog open={showGenerated} onOpenChange={(open) => { if (!open) closeGenerated() }}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-song text-[17px] tracking-[0.12em] text-ink-800">
+              访问口令已生成
+            </DialogTitle>
+            <DialogDescription className="text-[12px] leading-relaxed">
+              请立即抄存并转发给族人。此口令仅本次显示，关闭后无法再次查看；忘记可「重新生成」。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between gap-3 rounded-[8px] border border-paper-300 bg-paper-100 px-4 py-3">
+            <code className="select-all break-all font-mono text-[16px] tracking-[0.08em] text-ink-800">
+              {generatedPassword}
+            </code>
+            <button
+              type="button"
+              onClick={() => void handleCopyPassword()}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-paper-300 px-3 py-1.5 text-[12px] text-ink-700 transition-colors hover:border-ink-400"
+            >
+              <Copy className="size-3.5" />
+              {copied ? "已复制" : "复制"}
+            </button>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={closeGenerated}
+              className="rounded-[8px] inline-flex items-center gap-1.5 bg-ink-800 px-5 py-2.5 text-[12px] tracking-[0.12em] text-paper-50 transition-colors hover:bg-ink-700"
+            >
+              我已保存
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

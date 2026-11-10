@@ -345,13 +345,13 @@ export default function SiteSettings() {
     <div className="space-y-6">
       {heading}
 
-      <div className="grid gap-[18px] lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <section className={cn(cardClass, "flex flex-col")}>
-          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-4">
+          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-3.5">
             <Landmark className="size-4 text-ink-600" />
             <h2 className="font-song text-[15px] tracking-[0.14em] text-ink-800">网站名称</h2>
           </header>
-          <form onSubmit={saveSiteName} className="flex flex-1 flex-col gap-5 px-6 py-5">
+          <form onSubmit={saveSiteName} className="flex flex-1 flex-col gap-4 px-6 py-4">
             <p className="text-[11.5px] leading-[1.9] text-muted-foreground">
               平台全局名称，显示于浏览器标签页标题与前台背景水印，保存后全站即时同步。
             </p>
@@ -378,11 +378,11 @@ export default function SiteSettings() {
         </section>
 
         <section className={cn(cardClass, "flex flex-col")}>
-          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-4">
+          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-3.5">
             <ShieldCheck className="size-4 text-ink-600" />
             <h2 className="font-song text-[15px] tracking-[0.14em] text-ink-800">信息反馈通道</h2>
           </header>
-          <form onSubmit={saveFeedbackToggle} className="flex flex-1 flex-col gap-5 px-6 py-5">
+          <form onSubmit={saveFeedbackToggle} className="flex flex-1 flex-col gap-4 px-6 py-4">
             <p className="text-[11.5px] leading-[1.9] text-muted-foreground">
               关闭后，全站反馈入口（页脚、族内导航）即时隐藏，且服务端拒绝接收任何反馈提交，可作为备案所需的「非交互式」状态。开启后全站反馈入口恢复，且《隐私说明》将自动向访客披露反馈数据的收集与保存，无需手动维护文案。
             </p>
@@ -408,11 +408,11 @@ export default function SiteSettings() {
         </section>
 
         <section className={cn(cardClass, "flex flex-col")}>
-          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-4">
+          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-3.5">
             <Globe className="size-4 text-ink-600" />
             <h2 className="font-song text-[15px] tracking-[0.14em] text-ink-800">网站域名</h2>
           </header>
-          <div className="flex flex-1 flex-col gap-5 px-6 py-5">
+          <div className="flex flex-1 flex-col gap-4 px-6 py-4">
             <div>
               <p className={labelClass}>当前访问域名</p>
               <p className="mt-2 break-all font-song text-[20px] tracking-[0.06em] text-ink-800">
@@ -463,11 +463,11 @@ export default function SiteSettings() {
         </section>
 
         <section className={cn(cardClass, "flex flex-col")}>
-          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-4">
+          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-3.5">
             <ImageIcon className="size-4 text-ink-600" />
             <h2 className="font-song text-[15px] tracking-[0.14em] text-ink-800">站点图标</h2>
           </header>
-          <form onSubmit={saveFavicon} className="flex flex-1 flex-col gap-5 px-6 py-5">
+          <form onSubmit={saveFavicon} className="flex flex-1 flex-col gap-4 px-6 py-4">
             <p className="text-[11.5px] leading-[1.9] text-muted-foreground">
               上传一张方形图片（建议 32×32 或 48×48、含透明背景的 PNG；亦支持 ICO/SVG/WebP），保存后将即时替换浏览器标签页左侧图标。留空并保存即清除、恢复默认。
             </p>
@@ -513,11 +513,11 @@ export default function SiteSettings() {
         </section>
 
         <section className={cn(cardClass, "lg:col-span-2")}>
-          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-4">
+          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-3.5">
             <ShieldCheck className="size-4 text-ink-600" />
             <h2 className="font-song text-[15px] tracking-[0.14em] text-ink-800">备案信息</h2>
           </header>
-          <form onSubmit={saveFiling} className="space-y-5 px-6 py-5">
+          <form onSubmit={saveFiling} className="space-y-4 px-6 py-4">
             <p className="text-[11.5px] leading-[1.9] text-muted-foreground">
               备案号归属主谱，展示于全站前台页脚并链接至对应查询入口；留空则不展示。
             </p>
@@ -554,11 +554,11 @@ export default function SiteSettings() {
         </section>
 
         <section className={cn(cardClass, "lg:col-span-2")}>
-          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-4">
+          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-3.5">
             <BarChart3 className="size-4 text-ink-600" />
             <h2 className="font-song text-[15px] tracking-[0.14em] text-ink-800">访问统计接入</h2>
           </header>
-          <form onSubmit={saveAnalytics} className="space-y-5 px-6 py-5">
+          <form onSubmit={saveAnalytics} className="space-y-4 px-6 py-4">
             <p className="text-[11.5px] leading-[1.9] text-muted-foreground">
               仅超级管理员可配置。填写各服务商标识并启用后，系统自动按官方模板注入统计脚本，多家可同时运行，无需改动代码。百度 / 友盟为境内服务；Google（Analytics / Ads）与 Microsoft Clarity 在境内访问可能不稳定，可按需开启。每家可在下方填写自定义说明文案，将显示在《隐私说明》对应条款中（留空则使用默认模板）。
             </p>

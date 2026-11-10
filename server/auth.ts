@@ -268,6 +268,19 @@ export function generateTotpSecret(): string {
   return base32Encode(crypto.getRandomValues(new Uint8Array(20)))
 }
 
+/**
+ * 生成族谱前台「访问口令」：一律由后台随机生成、经哈希后落库，明文仅当次返回给超管分发。
+ * 不支持手动设置，避免族人自设弱口令被在线爆破。字母表已剔除易混淆字符（0/O、1/l/I）。
+ */
+const ACCESS_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+export function generateAccessPassword(length = 16): string {
+  const bytes = new Uint8Array(length)
+  crypto.getRandomValues(bytes)
+  let out = ""
+  for (let i = 0; i < length; i++) out += ACCESS_PASSWORD_ALPHABET[bytes[i] % ACCESS_PASSWORD_ALPHABET.length]
+  return out
+}
+
 /** 构造 otpauth:// URI，供验证器 App 扫码录入 */
 export function buildOtpauthUri(secret: string, account: string, issuer: string): string {
   const label = encodeURIComponent(`${issuer}:${account}`)

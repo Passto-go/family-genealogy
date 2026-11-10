@@ -21,15 +21,20 @@ export const adminApi = {
   listFamilies: () => request<{ families: FamilySummary[] }>("/admin/families"),
 
   createFamily: (draft: FamilyDraft) =>
-    request<{ id: number }>("/admin/families", {
+    request<{ id: number; accessPassword?: string }>("/admin/families", {
       method: "POST",
       body: JSON.stringify(draft),
     }),
 
   updateFamily: (id: number, patch: Partial<FamilyDraft> & { branchRenames?: [string, string][] }) =>
-    request<{ family: Family }>(`/admin/families/${id}`, {
+    request<{ family: Family; accessPassword?: string }>(`/admin/families/${id}`, {
       method: "PUT",
       body: JSON.stringify(patch),
+    }),
+
+  rotateAccessPassword: (id: number) =>
+    request<{ accessPassword: string }>(`/admin/families/${id}/rotate-access-password`, {
+      method: "POST",
     }),
 
   // ── 后台：成员 ──

@@ -27,7 +27,6 @@ export default function SubmissionList() {
 
   useEffect(() => {
     void load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // 切换筛选条件时清空已选，避免跨筛选误操作

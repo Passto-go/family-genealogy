@@ -37,7 +37,6 @@ export default function AdminList() {
 
   useEffect(() => {
     void load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleRoleChange(target: AdminUser, role: string) {

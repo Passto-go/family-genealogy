@@ -24,8 +24,6 @@ export default function MfaSetup() {
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
 
-  if (!loading && !user) return <Navigate to="/admin/login" replace />
-
   useEffect(() => {
     let active = true
     api
@@ -46,6 +44,10 @@ export default function MfaSetup() {
       active = false
     }
   }, [])
+
+  // 未登录且鉴权已结束 → 跳登录页。必须放在所有 Hook 之后：
+  // 放在 Hook 之前会让 Hook 调用顺序随「加载中 / 已登出」切换而改变，触发 React 的 Hook 数量不一致报错。
+  if (!loading && !user) return <Navigate to="/admin/login" replace />
 
   async function handleConfirm(event: React.FormEvent) {
     event.preventDefault()

@@ -99,7 +99,11 @@ function TenantSession({ slug, children }: { slug: string; children: React.React
   }, [slug])
 
   useEffect(() => {
-    void reload()
+    // reload 内部的状态写入都发生在 await 之后（属异步回调，非 effect 同步 setState）；
+    // 用异步 IIFE 显式划出边界，避免 lint 将 useCallback 内联后误判为同步写状态。
+    void (async () => {
+      await reload()
+    })()
   }, [reload])
 
   const unlock = useCallback(

@@ -45,11 +45,11 @@ export interface Family {
 /** 门户列表中的族谱条目 */
 export type FamilySummary = Family & { memberCount: number }
 
-/** 后台提交的族谱表单（password 为空表示不修改；维护人字段由服务端填充） */
+/** 后台提交的族谱表单（维护人字段由服务端填充；访问口令由后台自动生成，表单不携带） */
 export type FamilyDraft = Omit<
   Family,
   "id" | "updatedAt" | "createdAt" | "createdBy" | "updatedBy" | "hasPassword"
-> & { password: string }
+>
 
 export const EMPTY_FAMILY: FamilyDraft = {
   slug: "",
@@ -79,7 +79,6 @@ export const EMPTY_FAMILY: FamilyDraft = {
   policeNumber: "",
   isPublished: true,
   printIncludeExtended: false,
-  password: "",
 }
 
 export const VISIBILITY_LABEL: Record<Visibility, string> = {

@@ -5,6 +5,9 @@ import type { Family, FamilySummary } from "./types"
 
 const STORAGE_KEY = "family-admin-current"
 
+/** 稳定的空列表：避免每次渲染新建数组，导致下游 useMemo 反复失效 */
+const NO_FAMILIES: FamilySummary[] = []
+
 interface FamilyContextValue {
   /** 后台当前选中的族谱 */
   family: Family | null
@@ -38,58 +41,69 @@ function writeSelected(id: number | null) {
 
 export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth()
-  const [families, setFamilies] = useState<FamilySummary[]>([])
-  const [publicFamilies, setPublicFamilies] = useState<FamilySummary[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(readSelected)
-  const [loading, setLoading] = useState(true)
 
   // 普通管理员的作用域：仅本家族；超级管理员不限制
   const scopeId = user && user.role !== "super" ? (user.familyId ?? null) : null
 
+  // 身份作用域键：身份或作用域一变，旧列表在渲染阶段即失效，不再依赖 effect 同步清空，
+  // 从根本上杜绝切号/登录瞬间跨家族串显。
+  const scopeKey = authLoading ? "auth-loading" : user ? `admin:${user.id}:${scopeId ?? "all"}` : "anon"
+
+  const [store, setStore] = useState<{
+    key: string
+    families: FamilySummary[]
+    publicFamilies: FamilySummary[]
+  }>({ key: "", families: NO_FAMILIES, publicFamilies: NO_FAMILIES })
+  const [loadedKey, setLoadedKey] = useState("")
+
+  const families = store.key === scopeKey ? store.families : NO_FAMILIES
+  const publicFamilies = store.key === scopeKey ? store.publicFamilies : NO_FAMILIES
+  const loading = authLoading || loadedKey !== scopeKey
+
   const loadFamilies = useCallback(async () => {
     if (!user) {
-      // 未登录：公开列表仅供登录页品牌展示，绝不作为后台可选族谱列表，
-      // 否则未登录时缓存的「全量家族」会被带到登录后，造成跨家族串显。
+      // 未登录：公开列表仅供登录页品牌展示，绝不作为后台可选族谱列表
       try {
         const data = await api.listPublicFamilies()
-        setPublicFamilies(data.families)
+        setStore({ key: scopeKey, families: NO_FAMILIES, publicFamilies: data.families })
       } catch {
-        setPublicFamilies([])
+        setStore({ key: scopeKey, families: NO_FAMILIES, publicFamilies: NO_FAMILIES })
       }
-      setFamilies([])
       return
     }
     try {
       const data = await api.listFamilies()
       // 双保险：即便后端异常返回，也只保留当前用户有权访问的家族
-      setFamilies(scopeId == null ? data.families : data.families.filter((f) => f.id === scopeId))
+      setStore({
+        key: scopeKey,
+        families: scopeId == null ? data.families : data.families.filter((f) => f.id === scopeId),
+        publicFamilies: NO_FAMILIES,
+      })
     } catch {
-      setFamilies([])
+      setStore({ key: scopeKey, families: NO_FAMILIES, publicFamilies: NO_FAMILIES })
     }
-  }, [user, scopeId])
+  }, [user, scopeId, scopeKey])
 
-  // 身份变化时重新加载；先同步清空旧数据并置 loading，避免切号/登录瞬间串显与闪烁
+  // 身份变化时重新加载；加载完成才解除 loading（不在 effect 内同步 setState，避免额外渲染）
   useEffect(() => {
     if (authLoading) return
     let alive = true
-    setLoading(true)
-    setFamilies([])
-    void loadFamilies().finally(() => {
-      if (alive) setLoading(false)
-    })
+    // loadFamilies 内全部状态写入均发生在 await 之后；异步 IIFE 划出边界，避免被误判为同步 setState
+    void (async () => {
+      await loadFamilies()
+      if (alive) setLoadedKey(scopeKey)
+    })()
     return () => {
       alive = false
     }
-  }, [authLoading, loadFamilies])
+  }, [authLoading, loadFamilies, scopeKey])
 
-  // 收敛本地缓存的选中项：普通管理员强制指向本家族，清除跨家族残留
+  // 普通管理员的作用域固定：仅需持久化；选中值在渲染阶段即按 scopeId 收敛，无需回写状态
   useEffect(() => {
     if (scopeId == null) return
-    if (selectedId !== scopeId) {
-      setSelectedId(scopeId)
-      writeSelected(scopeId)
-    }
-  }, [scopeId, selectedId])
+    writeSelected(scopeId)
+  }, [scopeId])
 
   // 刷新列表不置全屏 loading，避免保存/手动刷新时整页闪烁
   const reload = useCallback(async () => {
@@ -109,11 +123,12 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const setFamily = useCallback(
     (next: Family) => {
       if (scopeId != null && next.id !== scopeId) return
-      setFamilies((current) =>
-        current.map((item) =>
+      setStore((current) => ({
+        ...current,
+        families: current.families.map((item) =>
           item.id === next.id ? { ...item, ...next, memberCount: item.memberCount } : item,
         ),
-      )
+      }))
     },
     [scopeId],
   )
@@ -121,12 +136,13 @@ export function FamilyProvider({ children }: { children: React.ReactNode }) {
   const family = useMemo(() => {
     if (user) {
       if (families.length === 0) return null
-      const matched = selectedId ? families.find((item) => item.id === selectedId) : undefined
+      const targetId = scopeId ?? selectedId
+      const matched = targetId ? families.find((item) => item.id === targetId) : undefined
       return matched ?? families.find((item) => item.isPrimary) ?? families[0] ?? null
     }
     // 未登录时仅用于品牌展示
     return publicFamilies.find((item) => item.isPrimary) ?? publicFamilies[0] ?? null
-  }, [user, families, publicFamilies, selectedId])
+  }, [user, families, publicFamilies, selectedId, scopeId])
 
   const value = useMemo(
     () => ({ family, families, loading: authLoading || loading, reload, setFamily, selectFamily }),
