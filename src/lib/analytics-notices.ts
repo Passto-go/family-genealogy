@@ -58,7 +58,7 @@ export const DEFAULT_ANALYTICS_NOTICES: Record<AnalyticsProviderKey, AnalyticsNo
     company: "Google LLC",
     region: "美国",
     scope:
-      "页面路径与标题、引荐来源、设备与浏览器信息、基于 IP 推断的大致地理位置、会话与互动事件等。Google 可能采集上述之外的信息，具体以其隐私政策与 Google 服务条款为准。",
+      "页面路径与标题、引荐来源、浏览器与操作系统、设备类型与更详细的设备信息、基于 IP 推断的城市级大致地理位置、会话与互动事件等。Google 可能采集上述之外的信息，具体以其隐私政策与 Google 服务条款为准。",
     purpose: "了解访客行为与内容访问情况，用于优化网站结构与内容呈现。本站不接收其明细数据用于识别个人身份。",
     cookie:
       "会写入 _ga、_ga_<容器ID> 等 Cookie 并设置 gtag 相关标识，用于区分访客与归因；具体由 Google 管理，您可清除浏览器数据、启用“拒绝追踪”（Do Not Track）或使用 Google 提供的退出插件去除。",
