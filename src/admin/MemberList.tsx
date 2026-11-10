@@ -603,7 +603,7 @@ export default function MemberList() {
               删除族人
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[12.5px] leading-relaxed">
-              确定删除「{pendingDelete?.name}」吗？此操作不可撤销。删除后会自动解除关联。
+              确定删除「{pendingDelete?.name}」吗？此操作不可撤销。若该成员被他人引为父母或配偶，删除后会自动解除关联；点击确认即刻完成解除，无需手动额外操作。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
