@@ -16,7 +16,11 @@ export const PROVIDER_META: Record<
   AnalyticsProviderKey,
   { label: string; hint: string; placeholder: string }
 > = {
-  baidu: { label: "百度统计", hint: "hm.baidu.com 站点 ID（纯数字）", placeholder: "如 12345678" },
+  baidu: {
+    label: "百度统计",
+    hint: "填 hm.js? 后面的 32 位代码（百度统计「代码获取」中复制；不是 8 位数字站点 ID）",
+    placeholder: "如 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d",
+  },
   umeng: { label: "友盟+（CNZZ）", hint: "s4.cnzz.com 站点 ID（纯数字）", placeholder: "如 12345678" },
   ga: { label: "Google Analytics", hint: "G- 开头的衡量 ID", placeholder: "如 G-XXXXXXXX" },
   clarity: { label: "Microsoft Clarity", hint: "Clarity 项目 ID", placeholder: "如 a1b2c3d4" },

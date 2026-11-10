@@ -165,9 +165,11 @@ function parseAnalyticsConfig(input: unknown): AnalyticsProvider[] | null {
     if (typeof key !== "string" || !ANALYTICS_KEYS.includes(key as AnalyticsProviderKey)) return null
     const enabled = rec.enabled === true
     const id = typeof rec.id === "string" ? rec.id.trim() : ""
+    // 启用时必须填写合法标识；未启用时允许留空，但已填写仍须合法并原样保留（不清空）
     if (enabled && !ANALYTICS_ID_PATTERN.test(id)) return null
+    if (id && !ANALYTICS_ID_PATTERN.test(id)) return null
     const notice = typeof rec.notice === "string" ? rec.notice.slice(0, 2000) : ""
-    out.push({ key: key as AnalyticsProviderKey, enabled, id: enabled ? id : "", notice })
+    out.push({ key: key as AnalyticsProviderKey, enabled, id, notice })
   }
   return out
 }
@@ -185,8 +187,11 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
+  // 第三方统计域名按厂商放行：百度（hm/hmcdn）、友盟 CNZZ（cnzz/mmstat）、
+  // Google（gtag/google-analytics/googleadservices/doubleclick/googlesyndication/www.google.com）、
+  // Clarity（含 scripts/c/r 子域）与 Bing 信标。
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://hm.baidu.com https://www.googletagmanager.com https://www.clarity.ms https://bat.bing.com https://*.cnzz.com https://www.googleadservices.com https://*.doubleclick.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://hm.baidu.com https://www.clarity.ms https://*.cnzz.com https://www.googleadservices.com https://*.doubleclick.net; font-src 'self' data:; connect-src 'self' https://hm.baidu.com https://www.google-analytics.com https://*.google-analytics.com https://www.clarity.ms https://bat.bing.com https://*.cnzz.com https://www.googleadservices.com https://*.doubleclick.net; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://hm.baidu.com https://hmcdn.baidu.com https://*.googletagmanager.com https://*.google-analytics.com https://*.clarity.ms https://bat.bing.com https://*.cnzz.com https://*.googleadservices.com https://*.doubleclick.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://hm.baidu.com https://hmcdn.baidu.com https://*.google-analytics.com https://*.googlesyndication.com https://*.clarity.ms https://*.cnzz.com https://*.mmstat.com https://*.googleadservices.com https://*.doubleclick.net https://www.google.com https://bat.bing.com; font-src 'self' data:; connect-src 'self' https://hm.baidu.com https://hmcdn.baidu.com https://*.google-analytics.com https://*.googletagmanager.com https://*.googlesyndication.com https://*.clarity.ms https://bat.bing.com https://*.cnzz.com https://*.mmstat.com https://*.googleadservices.com https://*.doubleclick.net https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
 }
 

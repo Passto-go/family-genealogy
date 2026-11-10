@@ -590,6 +590,11 @@ export default function SiteSettings() {
                       placeholder={meta.placeholder}
                       maxLength={64}
                     />
+                    {key === "baidu" && item.enabled && /^\d+$/.test(item.id.trim()) ? (
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-seal-700">
+                        百度 hm.js 需要「代码获取」里的 32 位代码，纯数字站点 ID 通常无效（脚本会返回空、统计不生效）。
+                      </p>
+                    ) : null}
                     <textarea
                       value={item.notice}
                       onChange={(event) => setProviderNotice(key, event.target.value)}

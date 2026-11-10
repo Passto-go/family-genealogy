@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom"
 import { BookOpen, FileText, Share2, Users } from "lucide-react"
 import { Note } from "@/components/site/LegalDoc"
+import { useAnalytics } from "@/lib/site-config"
+import { PROVIDER_META } from "@/lib/analytics"
 
 function SubSection({
   eyebrow,
@@ -49,6 +51,8 @@ const FEATURES = [
 ]
 
 export default function About() {
+  const analytics = useAnalytics()
+  const enabledAnalytics = analytics.filter((a) => a.enabled)
   return (
     <div className="mx-auto max-w-[860px] px-6 py-16 sm:py-24">
       <div>
@@ -116,7 +120,17 @@ export default function About() {
           <li className="flex gap-2.5">
             <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold-600" />
             <span>
-              页面与字体皆由本站与访客设备自行提供，不依赖第三方 CDN；仅接入百度统计以观访问之数，屏蔽其脚本即不生效，亦无碍翻阅。
+              {enabledAnalytics.length > 0 ? (
+                <>
+                  页面与字体皆由本站与访客设备自行提供，不依赖第三方 CDN；另接入
+                  {enabledAnalytics.map((a) => PROVIDER_META[a.key].label).join("、")}
+                  以观访问之数，其脚本仅在您于站点底部提示中选择「接受」后加载，拒绝或屏蔽即不生效，亦无碍翻阅。
+                </>
+              ) : (
+                <>
+                  页面与字体皆由本站与访客设备自行提供，不依赖第三方 CDN，当前亦未接入任何第三方分析或广告服务。
+                </>
+              )}
             </span>
           </li>
           <li className="flex gap-2.5">
