@@ -613,7 +613,11 @@ export function createLocalRepo(dbFile: string): Repo {
     },
 
     async deleteMember(id): Promise<void> {
+      // 删除时自动解除关联：把"把被删者当配偶/父亲/母亲"的引用一并清空，
+      // 避免子女/配偶悬空，无需管理员先逐个进编辑页解关联。
       run("UPDATE member SET spouse_id = NULL WHERE spouse_id = ?", id)
+      run("UPDATE member SET father_id = NULL WHERE father_id = ?", id)
+      run("UPDATE member SET mother_id = NULL WHERE mother_id = ?", id)
       run("DELETE FROM member WHERE id = ?", id)
     },
 

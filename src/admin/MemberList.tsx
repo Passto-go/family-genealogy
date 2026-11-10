@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useLocation, useSearchParams } from "react-router-dom"
 import { Download, Loader2, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react"
 import {
@@ -50,6 +50,9 @@ export default function MemberList() {
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [pendingBatchDelete, setPendingBatchDelete] = useState(false)
+  const [batchDeleting, setBatchDeleting] = useState(false)
 
   /* 分页与筛选的单一真源是地址栏：刷新、后退、分享链接都能复原；
      从编辑页按来源返回时，也不必依赖组件重挂载与副作用执行时序。
@@ -134,6 +137,16 @@ export default function MemberList() {
     void load()
   }, [load])
 
+  /* 筛选条件（搜索 / 世次 / 房支）变化时清空多选：避免批量删掉视野外的人 */
+  useEffect(() => {
+    setSelected(new Set())
+  }, [query, generation, branch])
+
+  /* 切换族谱（超管）时清空多选：id 跨族会撞、语义也乱 */
+  useEffect(() => {
+    setSelected(new Set())
+  }, [familyId])
+
   const generationOptions = useMemo(() => {
     const set = new Set(members.map((m) => m.generation))
     return [...set].sort((a, b) => a - b)
@@ -196,6 +209,15 @@ export default function MemberList() {
   const currentPage = Math.min(page, totalPages)
   const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
+  /* 多选：以"已选集合是否为空"为开关；全选只填当前页，手动勾选可跨页累积 */
+  const pageIds = pageItems.map((m) => m.id)
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id))
+  const somePageSelected = pageIds.some((id) => selected.has(id))
+  const headerRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (headerRef.current) headerRef.current.indeterminate = somePageSelected && !allPageSelected
+  }, [somePageSelected, allPageSelected])
+
   /* 编辑 / 删除后数据变少，原页码可能超出范围：钳制到最后一页，
      并提示「原页已无记录」。加载完成前不判断，避免空列表误触。 */
   useEffect(() => {
@@ -243,6 +265,51 @@ export default function MemberList() {
       await downloadMembersExport(filtered, family?.name || family?.tag || "")
     } finally {
       setExporting(false)
+    }
+  }
+
+  function toggleOne(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function togglePageAll() {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id))
+      else pageIds.forEach((id) => next.add(id))
+      return next
+    })
+  }
+
+  async function handleBatchDelete() {
+    if (selected.size === 0) return
+    setBatchDeleting(true)
+    try {
+      const res = await api.deleteMembers([...selected], familyId)
+      const okCount = res.deleted.length
+      const failCount = res.failed.length + res.rejected.length
+      let text = `已删除 ${okCount} 位族人`
+      if (res.branchHeadWarnings.length) {
+        text += `；${res.branchHeadWarnings.length} 位曾设为房头，请到家族设置重设`
+      }
+      if (failCount) text += `，${failCount} 位未能删除`
+      setMessage({ tone: okCount > 0 ? "ok" : "error", text })
+      setSelected(new Set())
+      setPendingBatchDelete(false)
+      await load()
+    } catch (error) {
+      setMessage({
+        tone: "error",
+        text: error instanceof ApiError ? error.message : "批量删除失败",
+      })
+      setPendingBatchDelete(false)
+    } finally {
+      setBatchDeleting(false)
     }
   }
 
@@ -383,10 +450,42 @@ export default function MemberList() {
         </span>
       </div>
 
+      {selected.size > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-seal-600 bg-seal-100 px-4 py-2.5">
+          <span className="text-[12px] text-seal-700">已选 {selected.size} 位</span>
+          <button
+            type="button"
+            onClick={() => setPendingBatchDelete(true)}
+            className="inline-flex items-center gap-1.5 rounded-[8px] bg-seal-600 px-3 py-1.5 text-[11.5px] tracking-[0.1em] text-white transition-colors hover:bg-seal-700"
+          >
+            <Trash2 className="size-3" />
+            批量删除
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="rounded-[8px] border border-paper-300 bg-white px-3 py-1.5 text-[11.5px] text-ink-700 transition-colors hover:border-ink-600"
+          >
+            取消选择
+          </button>
+        </div>
+      ) : null}
+
       <div className="overflow-x-auto rounded-[14px] border border-paper-300 bg-paper-50">
-        <table className="w-full min-w-[760px] border-collapse">
+        <table className="w-full min-w-[800px] border-collapse">
           <thead>
             <tr className="border-b border-paper-300 bg-paper-100/60">
+              <th className="w-10 px-3 py-2.5">
+                <input
+                  ref={headerRef}
+                  type="checkbox"
+                  className="size-3.5 cursor-pointer accent-seal-600"
+                  checked={allPageSelected}
+                  disabled={pageIds.length === 0}
+                  onChange={togglePageAll}
+                  aria-label="全选本页"
+                />
+              </th>
               {["世次", "姓名", "字号", "性别", "字辈", "房支", "生卒", "父", "配偶", ""].map((head) => (
                 <th
                   key={head}
@@ -400,13 +499,13 @@ export default function MemberList() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center">
+                <td colSpan={10} className="px-4 py-12 text-center">
                   <Loader2 className="mx-auto size-4 animate-spin text-ink-400" />
                 </td>
               </tr>
             ) : pageItems.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-[12px] text-muted-foreground">
+                <td colSpan={11} className="px-4 py-12 text-center text-[12px] text-muted-foreground">
                   没有符合条件的族人
                 </td>
               </tr>
@@ -416,6 +515,15 @@ export default function MemberList() {
                   key={member.id}
                   className="border-b border-paper-200 last:border-0 transition-colors hover:bg-paper-100/60"
                 >
+                  <td className="whitespace-nowrap px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      className="size-3.5 cursor-pointer accent-seal-600"
+                      checked={selected.has(member.id)}
+                      onChange={() => toggleOne(member.id)}
+                      aria-label={`选择 ${member.name}`}
+                    />
+                  </td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-[12.5px] text-muted-foreground">
                     {generationLabel(member.generation)}
                   </td>
@@ -495,7 +603,7 @@ export default function MemberList() {
               删除族人
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[12.5px] leading-relaxed">
-              确定删除「{pendingDelete?.name}」吗？若该族人已被他人引为父母或配偶，需先解除关联。此操作不可撤销。
+              确定删除「{pendingDelete?.name}」吗？此操作不可撤销。删除后会自动解除关联。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -509,6 +617,35 @@ export default function MemberList() {
               className="rounded-[8px] bg-seal-600 text-white hover:bg-seal-700"
             >
               {deleting ? <Loader2 className="size-3.5 animate-spin" /> : "确认删除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pendingBatchDelete}
+        onOpenChange={(open) => !open && setPendingBatchDelete(false)}
+      >
+        <AlertDialogContent className="rounded-sm border-paper-300">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-song text-[17px] tracking-[0.08em]">
+              批量删除族人
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12.5px] leading-relaxed">
+              确定删除选中的 {selected.size} 位族人吗？此操作不可撤销。删除后会自动解除关联。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-[8px]">取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={batchDeleting}
+              onClick={(event) => {
+                event.preventDefault()
+                void handleBatchDelete()
+              }}
+              className="rounded-[8px] bg-seal-600 text-white hover:bg-seal-700"
+            >
+              {batchDeleting ? <Loader2 className="size-3.5 animate-spin" /> : "确认删除"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

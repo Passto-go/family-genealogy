@@ -2098,13 +2098,7 @@ export function createApp(repo: Repo, secret: string) {
 
     const existing = c.get("member")!
 
-    const refs = await repo.countReferences(id)
-    if (refs > 0) {
-      throw new HTTPException(409, {
-        message: "该成员已被其他族人引用为父母或配偶，请先解除关联后再删除",
-      })
-    }
-
+    // 不再以"被引用"拦截删除：deleteMember 会在删除时自动解除父母/配偶关联。
     await repo.deleteMember(id)
     await repo.appendAuditLog({
       actorId: session.uid,
@@ -2116,6 +2110,52 @@ export function createApp(repo: Repo, secret: string) {
       detail: JSON.stringify({ name: existing.name }),
     })
     return c.json({ ok: true })
+  })
+
+  // ── 后台：批量删除成员（POST 以兼容前端 DELETE 带 body 被代理层丢弃的情形；
+  //     自动解除关联；普通管理员限本族；越权/不存在的 id 归入 rejected） ──
+  app.post("/api/admin/members/batch-delete", requireCapability(["edit_genealogy"]), async (c) => {
+    const session = c.get("session")!
+    const admin = (await repo.getAdminById(session.uid))!
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+    const rawIds = Array.isArray(body.ids) ? (body.ids as unknown[]) : []
+    const ids = rawIds.map((v) => Number(v)).filter((n) => Number.isFinite(n) && n > 0)
+    const familyId = Number(body.familyId)
+    if (!ids.length) throw new HTTPException(400, { message: "未提供有效的成员编号" })
+    if (!Number.isFinite(familyId) || familyId <= 0) {
+      throw new HTTPException(400, { message: "未指定族谱" })
+    }
+    if (admin.role !== "super" && admin.familyId !== familyId) {
+      throw new HTTPException(403, { message: "无权限操作该族谱的成员" })
+    }
+    const owned = new Set((await repo.listMembers(familyId)).map((m) => m.id))
+    const targetIds = ids.filter((id) => owned.has(id))
+    const rejected = ids.filter((id) => !owned.has(id))
+    const deleted: number[] = []
+    const failed: { id: number; reason: string }[] = []
+    for (const id of targetIds) {
+      try {
+        await repo.deleteMember(id)
+        deleted.push(id)
+      } catch (error) {
+        failed.push({ id, reason: error instanceof Error ? error.message : "删除失败" })
+      }
+    }
+    const family = await repo.getFamilyById(familyId)
+    const headIds = family?.branchHeads ? Object.values(family.branchHeads) : []
+    const branchHeadWarnings = deleted.filter((id) => headIds.includes(id))
+    for (const id of deleted) {
+      await repo.appendAuditLog({
+        actorId: session.uid,
+        actorName: session.username,
+        actorRole: admin.role,
+        action: "MEMBER_DELETE",
+        targetType: "member",
+        targetId: String(id),
+        detail: JSON.stringify({ batch: true }),
+      })
+    }
+    return c.json({ deleted, failed, rejected, branchHeadWarnings })
   })
 
   // ── 头像静态服务（ECS 本地盘；CF 迁移时由 R2 公共 URL 取代） ──

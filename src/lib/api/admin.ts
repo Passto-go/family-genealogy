@@ -63,6 +63,18 @@ export const adminApi = {
       method: "DELETE",
     }),
 
+  // 批量删除成员：自动解除关联；返回已删/失败/越权/曾为房头的 id 列表
+  deleteMembers: (ids: number[], familyId: number) =>
+    request<{
+      deleted: number[]
+      failed: { id: number; reason: string }[]
+      rejected: number[]
+      branchHeadWarnings: number[]
+    }>("/admin/members/batch-delete", {
+      method: "POST",
+      body: JSON.stringify({ ids, familyId }),
+    }),
+
   // ── 后台：成员头像（文件上传走独立 fetch，避免覆盖 Content-Type） ──
   uploadMemberAvatar: (id: number, formData: FormData) =>
     rawRequest(`/admin/members/${id}/avatar`, { method: "POST", body: formData }, "上传失败").then(
