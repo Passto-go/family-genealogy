@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect } from "react"
 import { Link, Navigate, Route, Routes } from "react-router-dom"
 import { fetchSiteName, useSiteName } from "@/lib/site-config"
+import { AnalyticsLoader } from "@/components/AnalyticsLoader"
+import { ConsentBanner } from "@/components/ConsentBanner"
 import { SiteLayout } from "@/components/site/SiteLayout"
 import { PublicLayout } from "@/components/site/PublicLayout"
 import Portal from "@/pages/Portal"
@@ -79,7 +81,9 @@ function SiteNameSync() {
 export default function App() {
   return (
     <AuthProvider>
-      <SiteNameSync />
+    <SiteNameSync />
+    <AnalyticsLoader />
+    <ConsentBanner />
       <FamilyProvider>
         <ThemeModeProvider>
           <Suspense fallback={<RouteFallback />}>

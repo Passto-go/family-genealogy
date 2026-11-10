@@ -143,6 +143,35 @@ function isHttpsRequest(c: { req: { header: (name: string) => string | undefined
  * 允许绑定验证器自身的两个接口（setup/confirm），否则超管永远无法完成绑定；
  * 认证类 /api/auth/* 不在 /api/admin/ 前缀下，天然放行。
  */
+// ── 第三方统计接入：结构化 ID 校验（拒绝任意脚本/HTML，仅允许厂商标识） ──
+type AnalyticsProviderKey = "baidu" | "umeng" | "ga" | "clarity" | "gads"
+interface AnalyticsProvider {
+  key: AnalyticsProviderKey
+  enabled: boolean
+  id: string
+  notice?: string
+}
+const ANALYTICS_KEYS: AnalyticsProviderKey[] = ["baidu", "umeng", "ga", "clarity", "gads"]
+// 厂商标识仅允许字母/数字/下划线/连字符，长度 4–64，足以排除 <>"'/` 等注入字符
+const ANALYTICS_ID_PATTERN = /^[\w-]{4,64}$/
+
+function parseAnalyticsConfig(input: unknown): AnalyticsProvider[] | null {
+  if (!Array.isArray(input)) return null
+  const out: AnalyticsProvider[] = []
+  for (const item of input) {
+    if (!item || typeof item !== "object") return null
+    const rec = item as Record<string, unknown>
+    const key = rec.key
+    if (typeof key !== "string" || !ANALYTICS_KEYS.includes(key as AnalyticsProviderKey)) return null
+    const enabled = rec.enabled === true
+    const id = typeof rec.id === "string" ? rec.id.trim() : ""
+    if (enabled && !ANALYTICS_ID_PATTERN.test(id)) return null
+    const notice = typeof rec.notice === "string" ? rec.notice.slice(0, 2000) : ""
+    out.push({ key: key as AnalyticsProviderKey, enabled, id: enabled ? id : "", notice })
+  }
+  return out
+}
+
 function isAdminBlockedWithoutMfa(pathname: string): boolean {
   if (!pathname.startsWith("/api/admin/")) return false
   if (pathname === "/api/admin/mfa/setup" || pathname === "/api/admin/mfa/confirm") {
@@ -157,7 +186,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Content-Security-Policy":
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://hm.baidu.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://hm.baidu.com; font-src 'self' data:; connect-src 'self' https://hm.baidu.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://hm.baidu.com https://www.googletagmanager.com https://www.clarity.ms https://bat.bing.com https://*.cnzz.com https://www.googleadservices.com https://*.doubleclick.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://hm.baidu.com https://www.clarity.ms https://*.cnzz.com https://www.googleadservices.com https://*.doubleclick.net; font-src 'self' data:; connect-src 'self' https://hm.baidu.com https://www.google-analytics.com https://*.google-analytics.com https://www.clarity.ms https://bat.bing.com https://*.cnzz.com https://www.googleadservices.com https://*.doubleclick.net; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
   "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
 }
 
@@ -1061,11 +1090,23 @@ export function createApp(repo: Repo, secret: string) {
     const siteName = (await repo.getSetting("siteName")) || "时光家谱"
     const feedbackEnabled = (await repo.getSetting("feedbackEnabled")) === "1"
     const faviconDataUrl = (await repo.getSetting("favicon")) || ""
-    return c.json({ siteName, feedbackEnabled, faviconDataUrl })
+    const analyticsRaw = await repo.getSetting("analytics")
+    let analytics: AnalyticsProvider[] = []
+    if (analyticsRaw) {
+      try {
+        const parsed = JSON.parse(analyticsRaw)
+        if (Array.isArray(parsed)) analytics = parsed as AnalyticsProvider[]
+      } catch {
+        analytics = []
+      }
+    }
+    return c.json({ siteName, feedbackEnabled, faviconDataUrl, analytics })
   })
 
   // 超级管理员修改网站名称（平台级全局配置，修改后全站同步）。
   app.put("/api/admin/site-config", requireSuper, async (c) => {
+    const session = c.get("session")!
+    const admin = (await repo.getAdminById(session.uid))!
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
     const siteName = str(body.siteName).trim().slice(0, 40)
     if (!siteName) {
@@ -1094,9 +1135,36 @@ export function createApp(repo: Repo, secret: string) {
         await repo.setSetting("favicon", favicon.slice(0, 300 * 1024))
       }
     }
+    // 统计接入：仅当请求携带 analytics 才更新（其余保存动作不覆盖已有配置）。
+    let analytics: AnalyticsProvider[] = []
+    if (Array.isArray(body.analytics)) {
+      const parsed = parseAnalyticsConfig(body.analytics)
+      if (!parsed) throw new HTTPException(400, { message: "统计配置格式不正确" })
+      analytics = parsed
+      await repo.setSetting("analytics", JSON.stringify(parsed))
+      await repo.appendAuditLog({
+        actorId: session.uid,
+        actorName: session.username,
+        actorRole: admin.role,
+        action: "ANALYTICS_UPDATE",
+        targetType: "site",
+        targetId: "analytics",
+        detail: JSON.stringify({ count: parsed.length }),
+      })
+    } else {
+      const existing = await repo.getSetting("analytics")
+      if (existing) {
+        try {
+          const parsed = JSON.parse(existing)
+          if (Array.isArray(parsed)) analytics = parsed as AnalyticsProvider[]
+        } catch {
+          analytics = []
+        }
+      }
+    }
     const feedbackEnabled = (await repo.getSetting("feedbackEnabled")) === "1"
     const faviconDataUrl = (await repo.getSetting("favicon")) || ""
-    return c.json({ siteName, feedbackEnabled, faviconDataUrl })
+    return c.json({ siteName, feedbackEnabled, faviconDataUrl, analytics })
   })
 
   // ── 证书域名：超级管理员后台绑定 / 续期 / 删除（自动 TLS 前置） ──

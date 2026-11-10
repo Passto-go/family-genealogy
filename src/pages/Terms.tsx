@@ -1,5 +1,8 @@
 import { Chapter, H3, LegalDoc, Note, UL, type TocItem } from "@/components/site/LegalDoc"
 import type { ReactNode } from "react"
+import { Link } from "react-router-dom"
+import { useAnalytics } from "@/lib/site-config"
+import { PROVIDER_META } from "@/lib/analytics"
 
 const TOC: TocItem[] = [
   { id: "terms-1", label: "一、条款的接受" },
@@ -26,8 +29,10 @@ function B({ children }: { children: ReactNode }) {
 const orderedListClass = "list-decimal space-y-2 pl-5 marker:text-muted-foreground/70"
 
 export default function Terms() {
+  const analytics = useAnalytics()
+  const enabledAnalytics = analytics.filter((a) => a.enabled)
   return (
-    <LegalDoc eyebrow="条款" title="许可声明" updatedAt="2026 年 11 月 9 日" toc={TOC}>
+    <LegalDoc eyebrow="条款" title="许可声明" updatedAt="2026 年 11 月 10 日" toc={TOC}>
       <div className="mb-6 border border-dashed px-4 py-3 text-[13px] leading-relaxed">
         示例文本：本页为开源模板，部署前请自行修改运营方、联系方式与管辖地，并据实调整内容。
       </div>
@@ -54,6 +59,17 @@ export default function Terms() {
         <p>
           本服务按"现状"提供。运营方保留根据运营需要调整、中断或终止部分或全部展示内容的权利，并将在合理范围内提前告知。
         </p>
+        {enabledAnalytics.length > 0 ? (
+          <Note label="第三方分析服务">
+            本服务接入的第三方分析/广告服务（依后台启用状态）：
+            {enabledAnalytics.map((a) => PROVIDER_META[a.key].label).join("、")}
+            。相关脚本仅在您于站点底部提示中选择「接受」后加载；其数据收集范围、用途、Cookie 使用与您的选择权，详见
+            <Link to="/privacy" className="text-gold-700 underline underline-offset-2 hover:text-gold-800">
+              《隐私说明》
+            </Link>
+            。
+          </Note>
+        ) : null}
       </Chapter>
 
       <Chapter id="terms-3" title="三、账户与密码（管理员）">

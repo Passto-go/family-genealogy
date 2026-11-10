@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowUpRight, Globe, ImageIcon, Landmark, Loader2, ShieldCheck } from "lucide-react"
+import { ArrowUpRight, BarChart3, Globe, ImageIcon, Landmark, Loader2, ShieldCheck } from "lucide-react"
 import { ApiError, api, type DomainView } from "@/lib/api"
 import { useAuth } from "@/lib/admin-context"
 import { useFamily } from "@/lib/family-context"
 import { usePrimaryFiling } from "@/lib/filing"
+import { PROVIDER_META, type AnalyticsProvider, type AnalyticsProviderKey } from "@/lib/analytics"
 import {
   setSiteName as setGlobalSiteName,
   setFeedbackEnabled,
   applyFavicon,
+  setAnalytics,
   DEFAULT_SITE_NAME,
 } from "@/lib/site-config"
 import { cn } from "@/lib/utils"
@@ -30,6 +32,22 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 type Message = { tone: "ok" | "error"; text: string }
+
+const EMPTY_ANALYTICS: Record<AnalyticsProviderKey, { enabled: boolean; id: string; notice: string }> = {
+  baidu: { enabled: false, id: "", notice: "" },
+  umeng: { enabled: false, id: "", notice: "" },
+  ga: { enabled: false, id: "", notice: "" },
+  clarity: { enabled: false, id: "", notice: "" },
+  gads: { enabled: false, id: "", notice: "" },
+}
+
+function buildAnalyticsMap(list?: AnalyticsProvider[]): Record<AnalyticsProviderKey, { enabled: boolean; id: string; notice: string }> {
+  const map = { ...EMPTY_ANALYTICS }
+  for (const p of list ?? []) {
+    if (p.key in map) map[p.key] = { enabled: !!p.enabled, id: p.id || "", notice: p.notice || "" }
+  }
+  return map
+}
 
 function MessageBar({ message }: { message: Message }) {
   return (
@@ -73,6 +91,17 @@ export default function SiteSettings() {
   const [faviconMessage, setFaviconMessage] = useState<Message | null>(null)
   const [savingFavicon, setSavingFavicon] = useState(false)
 
+  type AnalyticsEntry = { enabled: boolean; id: string; notice: string }
+  const [analyticsMap, setAnalyticsMap] = useState<Record<AnalyticsProviderKey, AnalyticsEntry>>({
+    baidu: { enabled: false, id: "", notice: "" },
+    umeng: { enabled: false, id: "", notice: "" },
+    ga: { enabled: false, id: "", notice: "" },
+    clarity: { enabled: false, id: "", notice: "" },
+    gads: { enabled: false, id: "", notice: "" },
+  })
+  const [analyticsMessage, setAnalyticsMessage] = useState<Message | null>(null)
+  const [savingAnalytics, setSavingAnalytics] = useState(false)
+
   useEffect(() => {
     if (!isSuper) return
     let active = true
@@ -84,6 +113,7 @@ export default function SiteSettings() {
           setFeedbackEnabledState(data.feedbackEnabled ?? false)
           const fav = data.faviconDataUrl ?? ""
           setFaviconDraft(fav)
+          setAnalyticsMap(buildAnalyticsMap(data.analytics))
         }
       })
       .catch(() => {})
@@ -225,6 +255,51 @@ export default function SiteSettings() {
       })
     } finally {
       setSavingFavicon(false)
+    }
+  }
+
+  function toggleProvider(key: AnalyticsProviderKey, enabled: boolean) {
+    setAnalyticsMap((prev) => ({ ...prev, [key]: { ...prev[key], enabled } }))
+  }
+
+  function setProviderId(key: AnalyticsProviderKey, id: string) {
+    setAnalyticsMap((prev) => ({ ...prev, [key]: { ...prev[key], id } }))
+  }
+
+  function setProviderNotice(key: AnalyticsProviderKey, notice: string) {
+    setAnalyticsMap((prev) => ({ ...prev, [key]: { ...prev[key], notice } }))
+  }
+
+  async function saveAnalytics(event: React.FormEvent) {
+    event.preventDefault()
+    setSavingAnalytics(true)
+    setAnalyticsMessage(null)
+    const list: AnalyticsProvider[] = (Object.keys(analyticsMap) as AnalyticsProviderKey[]).map((key) => ({
+      key,
+      enabled: analyticsMap[key].enabled,
+      id: analyticsMap[key].id.trim(),
+      notice: analyticsMap[key].notice.trim(),
+    }))
+    try {
+      const data = await api.putSiteConfig(
+        siteName.trim() || DEFAULT_SITE_NAME,
+        feedbackEnabled,
+        faviconDraft,
+        list,
+      )
+      setAnalyticsMap(buildAnalyticsMap(data.analytics))
+      setAnalytics(data.analytics)
+      setAnalyticsMessage({
+        tone: "ok",
+        text: "已保存，全站统计接入即时更新（新启用的服务商刷新后完全生效）",
+      })
+    } catch (error) {
+      setAnalyticsMessage({
+        tone: "error",
+        text: error instanceof ApiError ? error.message : "保存失败",
+      })
+    } finally {
+      setSavingAnalytics(false)
     }
   }
 
@@ -474,6 +549,66 @@ export default function SiteSettings() {
             >
               {savingFiling ? <Loader2 className="size-3.5 animate-spin" /> : null}
               保存备案信息
+            </button>
+          </form>
+        </section>
+
+        <section className={cn(cardClass, "lg:col-span-2")}>
+          <header className="flex items-center gap-2.5 border-b border-paper-200 px-6 py-4">
+            <BarChart3 className="size-4 text-ink-600" />
+            <h2 className="font-song text-[15px] tracking-[0.14em] text-ink-800">访问统计接入</h2>
+          </header>
+          <form onSubmit={saveAnalytics} className="space-y-5 px-6 py-5">
+            <p className="text-[11.5px] leading-[1.9] text-muted-foreground">
+              仅超级管理员可配置。填写各服务商标识并启用后，系统自动按官方模板注入统计脚本，多家可同时运行，无需改动代码。百度 / 友盟为境内服务；Google（Analytics / Ads）与 Microsoft Clarity 在境内访问可能不稳定，可按需开启。每家可在下方填写自定义说明文案，将显示在《隐私说明》对应条款中（留空则使用默认模板）。
+            </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {(Object.keys(PROVIDER_META) as AnalyticsProviderKey[]).map((key) => {
+                const meta = PROVIDER_META[key]
+                const item = analyticsMap[key]
+                return (
+                  <div key={key} className="rounded-[8px] border border-paper-200 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] text-ink-700">{meta.label}</p>
+                        <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{meta.hint}</p>
+                      </div>
+                      <label className="flex shrink-0 items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={item.enabled}
+                          onChange={(event) => toggleProvider(key, event.target.checked)}
+                          className="size-4 accent-ink-800"
+                        />
+                        <span className="text-[12px] text-muted-foreground">启用</span>
+                      </label>
+                    </div>
+                    <input
+                      value={item.id}
+                      onChange={(event) => setProviderId(key, event.target.value)}
+                      className={cn(inputClass, "mt-3")}
+                      placeholder={meta.placeholder}
+                      maxLength={64}
+                    />
+                    <textarea
+                      value={item.notice}
+                      onChange={(event) => setProviderNotice(key, event.target.value)}
+                      className={cn(inputClass, "mt-3 h-20 resize-y")}
+                      placeholder="可选：自定义该服务商在《隐私说明》中的说明文案；留空则使用默认模板"
+                      maxLength={2000}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            {analyticsMessage ? <MessageBar message={analyticsMessage} /> : null}
+            <button
+              type="submit"
+              disabled={savingAnalytics}
+              className="rounded-[8px] inline-flex items-center gap-1.5 bg-ink-800 px-5 py-2.5 text-[12px] tracking-[0.12em] text-paper-50 transition-colors hover:bg-ink-700 disabled:opacity-60"
+            >
+              {savingAnalytics ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              保存统计接入
             </button>
           </form>
         </section>

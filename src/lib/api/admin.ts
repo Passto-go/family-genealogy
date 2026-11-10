@@ -13,6 +13,7 @@ import type {
   SubmissionStatus,
 } from "../types"
 import { rawRequest, request } from "./client"
+import type { AnalyticsProvider } from "../analytics"
 import type { DomainView, MemberImportPayload } from "./types"
 
 export const adminApi = {
@@ -185,19 +186,27 @@ export const adminApi = {
     ).then((res) => res.text())
   },
 
-  // ── 平台级全局配置写入 ──
-  putSiteConfig: (siteName: string, feedbackEnabled?: boolean, faviconDataUrl?: string) =>
-    request<{ siteName: string; feedbackEnabled: boolean; faviconDataUrl: string }>(
-      "/admin/site-config",
-      {
-        method: "PUT",
-        body: JSON.stringify({
-          siteName,
-          ...(feedbackEnabled !== undefined ? { feedbackEnabled } : {}),
-          ...(faviconDataUrl !== undefined ? { faviconDataUrl } : {}),
-        }),
-      },
-    ),
+  // ── 平台级全局配置写入（analytics 为可选，提供时才更新，避免覆盖其他保存动作写入的值） ──
+  putSiteConfig: (
+    siteName: string,
+    feedbackEnabled?: boolean,
+    faviconDataUrl?: string,
+    analytics?: AnalyticsProvider[],
+  ) =>
+    request<{
+      siteName: string
+      feedbackEnabled: boolean
+      faviconDataUrl: string
+      analytics: AnalyticsProvider[]
+    }>("/admin/site-config", {
+      method: "PUT",
+      body: JSON.stringify({
+        siteName,
+        ...(feedbackEnabled !== undefined ? { feedbackEnabled } : {}),
+        ...(faviconDataUrl !== undefined ? { faviconDataUrl } : {}),
+        ...(analytics !== undefined ? { analytics } : {}),
+      }),
+    }),
 
   // ── 后台：证书域名（自动 TLS 签发/续期） ──
   listDomains: () => request<{ domains: DomainView[] }>("/admin/domains"),

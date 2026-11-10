@@ -9,21 +9,25 @@ import {
   UL,
   type TocItem,
 } from "@/components/site/LegalDoc"
-import { useFeedbackEnabled } from "@/lib/site-config"
+import { useAnalytics, useFeedbackEnabled } from "@/lib/site-config"
+import { PROVIDER_META, type AnalyticsProviderKey } from "@/lib/analytics"
+import { DEFAULT_ANALYTICS_NOTICES } from "@/lib/analytics-notices"
+import { resetAnalyticsConsent } from "@/lib/analytics-consent"
 import type { ReactNode } from "react"
 
 const TOC: TocItem[] = [
-  { id: "sec-1", label: "一、我们收集的信息" },
-  { id: "sec-2", label: "二、信息的使用目的" },
-  { id: "sec-3", label: "三、页面溯源水印" },
-  { id: "sec-4", label: "四、Cookie 与浏览器本地存储" },
-  { id: "sec-5", label: "五、第三方服务与信息共享" },
-  { id: "sec-6", label: "六、您的选择与控制" },
-  { id: "sec-7", label: "七、数据保存期限与安全措施" },
-  { id: "sec-8", label: "八、您的权利与行使方式" },
-  { id: "sec-9", label: "九、跨境传输与未成年人保护" },
-  { id: "sec-10", label: "十、本说明的更新" },
-  { id: "sec-11", label: "十一、联系方式" },
+  { id: "sec-1", label: "一、适用范围与基本原则" },
+  { id: "sec-2", label: "二、我们收集的信息" },
+  { id: "sec-3", label: "三、信息的使用目的" },
+  { id: "sec-4", label: "四、页面溯源水印" },
+  { id: "sec-5", label: "五、Cookie 与浏览器本地存储" },
+  { id: "sec-6", label: "六、涉及哪些第三方服务" },
+  { id: "sec-7", label: "七、统计说明与访客的选择" },
+  { id: "sec-8", label: "八、数据保存期限与安全措施" },
+  { id: "sec-9", label: "九、您的权利与行使方式" },
+  { id: "sec-10", label: "十、跨境传输与未成年人保护" },
+  { id: "sec-11", label: "十一、本说明的更新" },
+  { id: "sec-12", label: "十二、联系方式" },
 ]
 
 /** 条目首词的轻量强调（仅用于列表项引导词，不在句中加粗） */
@@ -33,17 +37,91 @@ function B({ children }: { children: ReactNode }) {
 
 const orderedListClass = "list-decimal space-y-2 pl-5 marker:text-muted-foreground/70"
 
+function AnalyticsNoticeItem({ providerKey, notice }: { providerKey: AnalyticsProviderKey; notice?: string }) {
+  const meta = PROVIDER_META[providerKey]
+  const def = DEFAULT_ANALYTICS_NOTICES[providerKey]
+  return (
+    <div className="mt-4">
+      <p className="font-song text-[14px] tracking-[0.1em] text-ink-800">
+        {meta.label}（{def.company}，{def.region}）
+      </p>
+      {notice ? (
+        <p className="mt-3 whitespace-pre-line text-[12px] leading-[1.9] text-muted-foreground">{notice}</p>
+      ) : (
+        <>
+          <Table head={["条款项", "说明"]}>
+            <tr>
+              <Td className="whitespace-nowrap font-medium text-ink-800">数据收集范围</Td>
+              <Td className="text-muted-foreground">{def.scope}</Td>
+            </tr>
+            <tr>
+              <Td className="whitespace-nowrap font-medium text-ink-800">使用目的</Td>
+              <Td className="text-muted-foreground">{def.purpose}</Td>
+            </tr>
+            <tr>
+              <Td className="whitespace-nowrap font-medium text-ink-800">Cookie 与本地标识</Td>
+              <Td className="text-muted-foreground">{def.cookie}</Td>
+            </tr>
+            <tr>
+              <Td className="whitespace-nowrap font-medium text-ink-800">Cookie 保存期限</Td>
+              <Td className="text-muted-foreground">{def.cookieExpiry}</Td>
+            </tr>
+            <tr>
+              <Td className="whitespace-nowrap font-medium text-ink-800">跨境传输</Td>
+              <Td className="text-muted-foreground">{def.crossBorder}</Td>
+            </tr>
+            <tr>
+              <Td className="whitespace-nowrap font-medium text-ink-800">您的选择</Td>
+              <Td className="text-muted-foreground">{def.choice}</Td>
+            </tr>
+          </Table>
+          <p className="mt-3 text-[12px] leading-[1.9] text-muted-foreground">
+            上述期限的起算与续期均以您的浏览器本地时间为准，由对应服务商脚本在您于站点底部提示选择「接受」、统计脚本加载后写入并随访问顺延刷新；您清除浏览器数据或屏蔽该服务商域名时，相关
+            Cookie 立即失效，不受上述到期日限制。
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function Privacy() {
   const feedbackEnabled = useFeedbackEnabled()
+  const analytics = useAnalytics()
+  const enabledAnalytics = analytics.filter((a) => a.enabled)
+  const analyticsLabels = enabledAnalytics.map((a) => PROVIDER_META[a.key].label)
+  const hasAnalytics = enabledAnalytics.length > 0
+  const hasCrossBorder = enabledAnalytics.some(
+    (a) => a.key === "ga" || a.key === "clarity" || a.key === "gads",
+  )
   return (
-    <LegalDoc eyebrow="隐私" title="隐私说明" updatedAt="2026 年 11 月 9 日" toc={TOC}>
+    <LegalDoc eyebrow="隐私" title="隐私说明" updatedAt="2026 年 11 月 10 日" toc={TOC}>
       <div className="mb-6 border border-dashed px-4 py-3 text-[13px] leading-relaxed">
         示例文本：本页为开源模板，部署前请自行修改运营方、联系方式与管辖地，并据实调整内容。
       </div>
-      <Chapter id="sec-1" title="一、我们收集的信息">
+      <Chapter id="sec-1" title="一、适用范围与基本原则">
         <p>
           本说明适用于通过本网站（以下简称"本服务"）浏览族谱内容的访客与读者，以及使用管理员账户维护族谱内容的管理员。本服务以「一部族谱一个独立空间」的方式组织数据，不同家族之间的数据相互隔离。
         </p>
+        <p>我们遵循以下基本原则：</p>
+        <UL>
+          <li>
+            <B>最小必要</B>：仅在实现功能与改善体验所必需的范围内接触您的信息，不收集与族谱展示无关的数据。
+          </li>
+          <li>
+            <B>目的限定</B>：所收集信息仅用于本说明列明的目的，不用于商业营销或用户画像。
+          </li>
+          <li>
+            <B>自主选择</B>：第三方分析脚本仅在您主动选择「接受」后加载；您拒绝或不予选择，均不影响浏览、检索与打印。
+          </li>
+          <li>
+            <B>不共享原则</B>
+            ：我们不会向无关第三方共享、出售或交易您的个人信息；仅在下列情形除外：取得您的明确同意；为遵守适用的法律法规或司法、行政机关的合法要求；为保护本服务、用户或公众的合法权益所必需。
+          </li>
+        </UL>
+      </Chapter>
+
+      <Chapter id="sec-2" title="二、我们收集的信息">
         <p>
           我们遵循最小必要原则，仅在下列情形下接触您的信息。下表逐项列明信息内容、产生场景与保存情况：
         </p>
@@ -101,8 +179,10 @@ export default function Privacy() {
             ：服务端不记录「访问时间、请求路径、浏览器类型（User-Agent）、来源页面」等请求日志；仅在程序出错时向服务器自身控制台输出错误信息用于排障，该信息不与您的身份关联存储。
           </li>
           <li>
-            <B>不使用广告与跨站追踪</B>
-            ：页面无广告代码，无跨站追踪脚本；除第五节披露的百度统计外，不加载其他第三方统计、社交或分析组件。
+            <B>不加载无关第三方组件</B>
+            ：{hasAnalytics
+              ? `除第六、七节披露的${analyticsLabels.join("、")}外，不加载其他第三方统计、社交或分析组件；所接入的服务仅用于了解访问情况，不用于实现本站任何功能。`
+              : "页面不加载任何第三方统计、社交或分析组件。"}
           </li>
           <li>
             <B>不采集设备指纹</B>
@@ -121,7 +201,7 @@ export default function Privacy() {
         </UL>
       </Chapter>
 
-      <Chapter id="sec-2" title="二、信息的使用目的">
+      <Chapter id="sec-3" title="三、信息的使用目的">
         <Table head={["信息", "使用目的", "不予使用的情形"]}>
           {feedbackEnabled ? (
             <tr>
@@ -153,11 +233,11 @@ export default function Privacy() {
           </tr>
         </Table>
         <p>
-          我们不会将可识别个人身份的信息用于上述目的之外的商业营销，亦不会出售或出租您的信息。
+          上述信息的使用均限于本说明列明的目的，不用于商业营销或用户画像（总体原则见第一节）。
         </p>
       </Chapter>
 
-      <Chapter id="sec-3" title="三、页面溯源水印">
+      <Chapter id="sec-4" title="四、页面溯源水印">
         <p>本服务页面叠加有一层低透明度的斜向文字，用作内容溯源标识。</p>
         <UL>
           <li>
@@ -175,7 +255,7 @@ export default function Privacy() {
           <li>
             <B>处理限度</B>：水印在页面生成时即时读取访客 IP
             与设备时区，仅用于生成水印文字；不写入数据库，不写入访问日志，不与您在本站产生的其他数据关联，不向任何第三方提供。本站短暂用于限流的内存计数（见
-            「一、我们收集的信息 · 内存限流计数」）与水印用途相互独立。
+            「二、我们收集的信息 · 内存限流计数」）与水印用途相互独立。
           </li>
           <li>
             <B>可见性</B>：透明度较低，正常阅读时不易察觉，不影响页面的点击与选中操作。
@@ -187,7 +267,7 @@ export default function Privacy() {
         </UL>
       </Chapter>
 
-      <Chapter id="sec-4" title="四、Cookie 与浏览器本地存储">
+      <Chapter id="sec-5" title="五、Cookie 与浏览器本地存储">
         <p>本服务在您的浏览器中写入下表所列数据，此外不写入其他 Cookie 或本地存储：</p>
         <Table head={["名称", "类型", "作用", "有效期与清除方式"]}>
           <tr>
@@ -235,79 +315,97 @@ export default function Privacy() {
           上述数据均不含业务明文密码，不会上传用于识别个人身份。您可通过浏览器设置随时清除；清除后最多需要重新登录后台或重新输入族谱口令，不影响正常浏览。
         </Note>
         <p>
-          上述 Cookie 均为实现所必需，不用于广告投放或跨站追踪，故不设置单独的同意弹窗。
+          上述 Cookie 均为实现本站功能所必需。第三方分析脚本写入的 Cookie 或同类标识，以及相应的同意与清除方式，见第七节。
         </p>
       </Chapter>
 
-      <Chapter id="sec-5" title="五、第三方服务与信息共享">
-        <p>
-          <B>本服务使用两类第三方服务：访问统计（百度统计）与云服务器（阿里云）。</B>
-          两者均部署于中国境内，不涉及向境外提供您的个人信息。
-        </p>
-        <Table head={["服务", "提供方", "用途", "涉及的数据与责任划分"]}>
-          <tr>
-            <Td className="font-medium text-ink-800">访问统计</Td>
-            <Td>百度统计（百度公司，境内）</Td>
-            <Td>统计页面访问量与访问来源，用于了解哪些内容被查阅、改善版面与内容组织</Td>
-            <Td>
-              访问的页面地址、访问时间与来源、浏览器与操作系统等环境信息，以及百度统计自行写入的
-              Cookie 或同类标识（具体以百度隐私政策为准）。该服务由其提供方按其自身条款运营与维护
-            </Td>
-          </tr>
+      <Chapter id="sec-6" title="六、涉及哪些第三方服务">
+        <p>本服务依赖下列第三方服务；其角色、提供方与数据概况如下：</p>
+        <Table head={["服务", "提供方", "用途", "数据跨境概况"]}>
           <tr>
             <Td className="font-medium text-ink-800">云服务器</Td>
             <Td>阿里云（阿里云计算有限公司，境内）</Td>
             <Td>提供运行本站所需的云服务器、网络与存储等基础设施</Td>
-            <Td>
-              本站谱牒与账户数据以数据库文件形式存放于该云服务器，由运营方自行管理与备份；机房、网络、供电、存储硬件等基础设施的运行与运维，由阿里云按其服务条款负责
-            </Td>
+            <Td>位于中国境内，不涉及向境外提供</Td>
           </tr>
+          {enabledAnalytics.map((a) => (
+            <tr key={a.key}>
+              <Td className="font-medium text-ink-800">{PROVIDER_META[a.key].label}</Td>
+              <Td>
+                {DEFAULT_ANALYTICS_NOTICES[a.key].company}（{DEFAULT_ANALYTICS_NOTICES[a.key].region}）
+              </Td>
+              <Td>访问统计（了解内容访问情况、改善版面）；具体用途见第七节该服务商条款</Td>
+              <Td>
+                {hasCrossBorder && (a.key === "ga" || a.key === "clarity" || a.key === "gads")
+                  ? "涉及传输至美国"
+                  : "位于中国境内"}
+              </Td>
+            </tr>
+          ))}
         </Table>
         <p>
-          本站不接收百度统计采集的明细数据用于识别个人身份，也不依赖该服务实现任何网站功能。
+          除上述服务外，页面与接口均由本站服务器直接提供，字体由访问设备本地提供，不加载第三方广告、社交组件或字体
+          CDN（所接入的分析脚本除外，见第七节）。共享与披露的总体原则见第一节；本节所列第三方均为实现功能所必需，我们不向其提供可识别个人身份的本站业务数据。
         </p>
         <p>
-          <B>如何关闭统计</B>：在浏览器或扩展中屏蔽 <C>hm.baidu.com</C> 域名即可停止统计脚本加载，
-          屏蔽后不影响浏览、检索与打印。
+          {hasAnalytics
+            ? "本说明所列分析服务随后台启用状态自动更新；如停用某服务，其对应条款将不再显示，届时「最后更新」日期同步调整。"
+            : "本站当前未启用任何第三方访问统计服务。"}
         </p>
-        <p>
-          除上述两类服务外，页面与接口均由本站服务器直接提供，字体由访问设备本地提供，不加载第三方广告、社交组件或字体
-          CDN。我们不会向无关第三方共享、出售或交易您的个人信息，仅在下列情形除外：取得您的明确同意；为遵守适用的法律法规或司法、行政机关的合法要求；为保护本服务、用户或公众的合法权益所必需。
-        </p>
-        <p>
-          <B>后续可能变更</B>
-          ：如未来新增其他第三方服务，我们将：
-        </p>
-        <ol className={orderedListClass}>
-          <li>在本节补充列明所接入服务的名称、提供方、所收集的数据类型与用途；</li>
-          <li>
-            说明该类服务是否会在您的设备上写入 Cookie
-            或同类标识，并提供相应的关闭或拒绝方式；
-          </li>
-          <li>
-            如该等服务的处理超出本说明原定范围，将事先以显著方式告知，并在适用时征得您的同意。
-          </li>
-        </ol>
-        <p>届时本说明的「最后更新」日期将同步调整。</p>
       </Chapter>
 
-      <Chapter id="sec-6" title="六、您的选择与控制">
-        <p>本站仅接入百度统计一种分析服务，您可以选择不被统计。可以自主作出的选择包括：</p>
-        <ol className={orderedListClass}>
+      <Chapter id="sec-7" title="七、统计说明与访客的选择">
+        <p>
+          <B>加载前提（同意机制）</B>
+          ：本站接入的分析服务（见第六节名册）仅在您于页面底部提示中选择「接受」后才会加载其脚本；您选择「拒绝」或不予选择，相关脚本均不会加载，也不影响任何浏览、检索与打印功能。
+        </p>
+        {hasAnalytics ? (
+          <>
+            <H3>各分析服务说明</H3>
+            <p className="text-[12px] leading-[1.9] text-muted-foreground">
+              下列为第六节名册中各项已启用服务的具体条款说明。
+            </p>
+            {enabledAnalytics.map((a) => (
+              <AnalyticsNoticeItem key={a.key} providerKey={a.key} notice={a.notice} />
+            ))}
+            <H3>如何更改您的选择</H3>
+            <p>
+              如需重新选择，可点击下方「重置统计选择」按钮，或清除浏览器本地存储中的统计偏好（键名{" "}
+              <C>analytics-consent</C>）后刷新页面；选择「拒绝」后，本站会移除已加载的分析脚本。您亦可随时通过浏览器扩展屏蔽下列域名停止对应脚本：
+            </p>
+            <UL>
+              {enabledAnalytics.map((a) => (
+                <li key={a.key}>
+                  <B>{PROVIDER_META[a.key].label}</B>：屏蔽 <C>{DEFAULT_ANALYTICS_NOTICES[a.key].block}</C>。
+                </li>
+              ))}
+            </UL>
+            <button
+              type="button"
+              onClick={() => resetAnalyticsConsent()}
+              className="mt-2 rounded-[8px] border border-ink-800/20 px-5 py-2.5 text-[12px] tracking-[0.12em] text-ink-700 transition-colors hover:border-ink-700 hover:bg-paper-100"
+            >
+              重置统计选择
+            </button>
+          </>
+        ) : (
+          <p>本站当前未启用任何第三方访问统计服务，故无上述加载与选择事项。</p>
+        )}
+        <H3>通用选择</H3>
+        <UL>
           <li>使用无痕模式访问：本服务全部功能均可在无痕模式下正常使用；</li>
           <li>随时清除 Cookie 与本地存储：最多需要重新登录后台或重新输入族谱口令；</li>
-          <li>使用浏览器扩展屏蔽水印元素：本服务不依赖水印实现任何功能，屏蔽后不影响浏览与检索；</li>
           <li>
-            屏蔽统计脚本：拦截 <C>hm.baidu.com</C> 即可不再发送统计请求，不影响任何浏览功能。
+            屏蔽水印元素：本站不依赖水印实现任何功能，屏蔽后不影响浏览与检索（详见第四节）。
           </li>
-        </ol>
+        </UL>
       </Chapter>
 
-      <Chapter id="sec-7" title="七、数据保存期限与安全措施">
+      <Chapter id="sec-8" title="八、数据保存期限与安全措施">
         <p>本服务的运营方及个人信息处理者为 Clantree Contributors，联系方式见文末。</p>
         <p>
           <B>存储位置与安全措施</B>
-          ：本站运行于第三方云服务商阿里云提供的云服务器（位于中国境内）。机房、网络、供电与存储硬件等基础设施由阿里云按其服务条款负责；
+          ：本站部署于第三方云服务商阿里云提供的云服务器（位于中国境内，基础设施详见第六节）。机房、网络、供电与存储硬件等基础设施由阿里云按其服务条款负责；
           谱牒与账户数据以数据库文件形式存放于该云服务器上，由运营方自行管理与备份，不另行复制到其他第三方系统。密码采用{" "}
           <C>PBKDF2</C> 加盐哈希存储，服务端不持有明文。我们采取访问控制、传输加密与定期备份等合理措施保护数据安全。互联网环境不存在绝对安全，管理员亦应妥善保管账户与密码。
         </p>
@@ -331,10 +429,6 @@ export default function Privacy() {
             <Td>仅在生成水印时即时使用，不保存</Td>
           </tr>
           <tr>
-            <Td className="font-medium text-ink-800">百度统计数据</Td>
-            <Td>由百度按其隐私政策保存与删除；本站不另行留存，也不接收可识别个人身份的明细数据</Td>
-          </tr>
-          <tr>
             <Td className="font-medium text-ink-800">内存限流中的 IP</Td>
             <Td>仅存于服务器内存约 10 分钟，服务重启即清空，不落盘</Td>
           </tr>
@@ -344,8 +438,16 @@ export default function Privacy() {
           </tr>
           <tr>
             <Td className="font-medium text-ink-800">Cookie 与本地存储</Td>
-            <Td>各见「四、Cookie 与浏览器本地存储」</Td>
+            <Td>各见「五、Cookie 与浏览器本地存储」</Td>
           </tr>
+          {hasAnalytics ? (
+            <tr>
+              <Td className="font-medium text-ink-800">各分析服务商采集的数据</Td>
+              <Td>
+                由对应提供方按其隐私政策保存与删除（见第七节各服务商条款）；本站不另行留存，也不接收可识别个人身份的明细数据
+              </Td>
+            </tr>
+          ) : null}
         </Table>
         <p>
           <B>安全事件通知</B>
@@ -353,7 +455,7 @@ export default function Privacy() {
         </p>
       </Chapter>
 
-      <Chapter id="sec-8" title="八、您的权利与行使方式">
+      <Chapter id="sec-9" title="九、您的权利与行使方式">
         <p>在适用法律允许的范围内，您对自己的个人信息享有下列权利：</p>
         <ol className={orderedListClass}>
           <li>
@@ -380,14 +482,16 @@ export default function Privacy() {
           </li>
         </ol>
         <p>
-          如需行使上述权利，请通过本说明末尾「十一、联系方式」与我们联系。我们将在核实身份后于合理期限内答复。
+          如需行使上述权利，请通过本说明末尾「十二、联系方式」与我们联系。我们将在核实身份后于合理期限内答复。
         </p>
       </Chapter>
 
-      <Chapter id="sec-9" title="九、跨境传输与未成年人保护">
+      <Chapter id="sec-10" title="十、跨境传输与未成年人保护">
         <p>
           <B>跨境传输</B>
-          ：本站服务器（阿里云）与接入的访问统计服务（百度统计）均位于中国境内，目前不涉及向境外提供您的个人信息。如未来发生跨境提供，我们将依法履行告知义务并取得您的单独同意。
+          ：{hasCrossBorder
+            ? "本站服务器（阿里云）位于中国境内；接入的分析服务中，百度统计与友盟+位于中国境内，而 Google Analytics、Microsoft Clarity 与 Google Ads 由位于美国的提供方（Google LLC / Microsoft Corporation）运营，相关数据处理涉及传输至美国。各服务的具体跨境情况见第七节对应条款。涉及向境外提供个人信息的，我们依法履行告知义务，并在适用时取得您的单独同意。"
+            : "本站服务器（阿里云）与接入的访问统计服务均位于中国境内，目前不涉及向境外提供您的个人信息。"}
         </p>
         <p>
           <B>未成年人保护</B>
@@ -395,13 +499,13 @@ export default function Privacy() {
         </p>
       </Chapter>
 
-      <Chapter id="sec-10" title="十、本说明的更新">
+      <Chapter id="sec-11" title="十一、本说明的更新">
         <p>
           我们可能不时更新本隐私说明。除法定要求外，重大变更将通过本页面「最后更新」日期及页脚入口予以提示。您继续使用本服务，即视为接受更新后的说明。
         </p>
       </Chapter>
 
-      <Chapter id="sec-11" title="十一、联系方式">
+      <Chapter id="sec-12" title="十二、联系方式">
         <p>
           如对本隐私说明或我们的信息处理实践有任何疑问、意见，或需行使上述权利，请
           {feedbackEnabled ? "通过网站内反馈通道提交，或" : null}发送邮件联系网站管理员。

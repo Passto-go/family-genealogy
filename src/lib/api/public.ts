@@ -1,6 +1,7 @@
 /** 公开接口：门户、单部族谱、访客溯源、信息反馈、站点配置读取 */
 
 import type { Family, FamilySummary, Member, Stats } from "../types"
+import type { AnalyticsProvider } from "../analytics"
 import { request } from "./client"
 
 export const publicApi = {
@@ -47,9 +48,12 @@ export const publicApi = {
       body: JSON.stringify(body),
     }),
 
-  // ── 平台级全局配置（网站名称 / 反馈开关 / 站点图标） ──
+  // ── 平台级全局配置（网站名称 / 反馈开关 / 站点图标 / 统计接入） ──
   getSiteConfig: () =>
-    request<{ siteName: string; feedbackEnabled?: boolean; faviconDataUrl?: string }>(
-      "/public/site-config",
-    ),
+    request<{
+      siteName: string
+      feedbackEnabled?: boolean
+      faviconDataUrl?: string
+      analytics?: AnalyticsProvider[]
+    }>("/public/site-config"),
 }

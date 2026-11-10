@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react"
+import type { AnalyticsProvider } from "./analytics"
 
 /**
  * 网站名称：全站唯一数据源，供浏览器标签页标题与背景水印共用。
@@ -89,10 +90,12 @@ export async function fetchSiteName(): Promise<void> {
       siteName?: string
       feedbackEnabled?: boolean
       faviconDataUrl?: string
+      analytics?: AnalyticsProvider[]
     }
     if (data.siteName) setSiteName(data.siteName)
     if (typeof data.feedbackEnabled === "boolean") setFeedbackEnabled(data.feedbackEnabled)
     if (typeof data.faviconDataUrl === "string") applyFavicon(data.faviconDataUrl)
+    if (Array.isArray(data.analytics)) setAnalytics(data.analytics)
   } catch {
     // 网络异常时静默降级，沿用本地 / 默认值
   }
@@ -122,6 +125,30 @@ export function subscribeFeedbackEnabled(listener: () => void): () => void {
 
 export function useFeedbackEnabled(): boolean {
   return useSyncExternalStore(subscribeFeedbackEnabled, getFeedbackEnabled, getFeedbackEnabled)
+}
+
+// 访问统计接入配置（平台级，与普通访客页/前台同源；超管在后台写入，前端据此注入脚本）。
+let analytics: AnalyticsProvider[] = []
+const analyticsListeners = new Set<() => void>()
+
+export function getAnalytics(): AnalyticsProvider[] {
+  return analytics
+}
+
+export function setAnalytics(value: AnalyticsProvider[]): void {
+  analytics = Array.isArray(value) ? value : []
+  analyticsListeners.forEach((listener) => listener())
+}
+
+export function subscribeAnalytics(listener: () => void): () => void {
+  analyticsListeners.add(listener)
+  return () => {
+    analyticsListeners.delete(listener)
+  }
+}
+
+export function useAnalytics(): AnalyticsProvider[] {
+  return useSyncExternalStore(subscribeAnalytics, getAnalytics, getAnalytics)
 }
 
 export function useSiteName(): string {

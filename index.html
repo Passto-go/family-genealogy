@@ -22,19 +22,6 @@
         } catch (e) {}
       })();
     </script>
-    <script>
-      // 访问统计默认关闭：构建时由 VITE_BAIDU_ANALYTICS_ID 注入站点标识，
-      // 未配置则占位符保持原样，这里直接跳过，不请求任何第三方脚本。
-      (function () {
-        var id = "%VITE_BAIDU_ANALYTICS_ID%";
-        if (!id || id.indexOf("%") === 0) return;
-        window._hmt = window._hmt || [];
-        var hm = document.createElement("script");
-        hm.src = "https://hm.baidu.com/hm.js?" + id;
-        var s = document.getElementsByTagName("script")[0];
-        s.parentNode.insertBefore(hm, s);
-      })();
-    </script>
   </head>
   <body>
     <div id="root"></div>
