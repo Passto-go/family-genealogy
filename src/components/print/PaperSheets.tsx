@@ -540,231 +540,253 @@ const measureName = (name: string) =>
  * 因此吊线不会斜穿别人的支，房支在图上也是连续的。
  * 一行放不下时整块换行：块内不拆，父子不跨行，行数尽量均分。
  */
-function useVolumeChart(volume: Volume) {
-  return useMemo(() => {
-    const people = volume.people
-    const byId = new Map(people.map((m) => [m.id, m]))
-    /* 父在本卷内随父，父不在（外衍之父在夫家）改随母 */
-    const parentOf = (m: Member): number | null => {
-      if (m.fatherId != null && byId.has(m.fatherId)) return m.fatherId
-      if (m.motherId != null && byId.has(m.motherId)) return m.motherId
-      return null
-    }
+function buildVolumeChart(volume: Volume) {
+  const people = volume.people
+  const byId = new Map(people.map((m) => [m.id, m]))
+  /* 父在本卷内随父，父不在（外衍之父在夫家）改随母 */
+  const parentOf = (m: Member): number | null => {
+    if (m.fatherId != null && byId.has(m.fatherId)) return m.fatherId
+    if (m.motherId != null && byId.has(m.motherId)) return m.motherId
+    return null
+  }
 
-    /* people 已按谱序排过，按序收集即得「房支连续、房内长幼」的兄弟次序 */
-    const kidsMap = new Map<number, Member[]>()
-    for (const m of people) {
-      const pid = parentOf(m)
-      if (pid == null) continue
-      const arr = kidsMap.get(pid)
-      if (arr) arr.push(m)
-      else kidsMap.set(pid, [m])
-    }
-    const roots = people.filter((m) => parentOf(m) == null)
+  /* people 已按谱序排过，按序收集即得「房支连续、房内长幼」的兄弟次序 */
+  const kidsMap = new Map<number, Member[]>()
+  for (const m of people) {
+    const pid = parentOf(m)
+    if (pid == null) continue
+    const arr = kidsMap.get(pid)
+    if (arr) arr.push(m)
+    else kidsMap.set(pid, [m])
+  }
+  const roots = people.filter((m) => parentOf(m) == null)
 
-    interface ChartNode {
-      id: number
-      x: number
-      y: number
-    }
-    /** 线段：竖线或横线，坐标为块内相对值 */
-    interface Seg {
-      x1: number
-      y1: number
-      x2: number
-      y2: number
-    }
-    /** 一棵子树排好后的整块：宽高、根的位置、节点坐标、连线 */
-    interface Block {
-      w: number
-      h: number
-      /** 块根相对块左缘的 x */
-      rootX: number
-      nodes: ChartNode[]
-      verticals: Seg[]
-      horizontals: Seg[]
-    }
+  interface ChartNode {
+    id: number
+    x: number
+    y: number
+  }
+  /** 线段：竖线或横线，坐标为块内相对值 */
+  interface Seg {
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+  }
+  /** 一棵子树排好后的整块：宽高、根的位置、节点坐标、连线 */
+  interface Block {
+    w: number
+    h: number
+    /** 块根相对块左缘的 x */
+    rootX: number
+    nodes: ChartNode[]
+    verticals: Seg[]
+    horizontals: Seg[]
+  }
 
-    /** 子块按可用宽装箱成若干行 */
-    const packRows = (blocks: Block[]): Block[][] => {
-      const rows: Block[][] = []
-      let row: Block[] = []
-      let rowW = 0
-      for (const b of blocks) {
-        const add = (row.length ? CHART_GAP_X : 0) + b.w
-        if (row.length > 0 && rowW + add > CHART_MAX_W) {
-          rows.push(row)
-          row = [b]
-          rowW = b.w
-        } else {
-          row.push(b)
-          rowW += add
-        }
+  /** 子块按可用宽装箱成若干行 */
+  const packRows = (blocks: Block[]): Block[][] => {
+    const rows: Block[][] = []
+    let row: Block[] = []
+    let rowW = 0
+    for (const b of blocks) {
+      const add = (row.length ? CHART_GAP_X : 0) + b.w
+      if (row.length > 0 && rowW + add > CHART_MAX_W) {
+        rows.push(row)
+        row = [b]
+        rowW = b.w
+      } else {
+        row.push(b)
+        rowW += add
       }
-      if (row.length > 0) rows.push(row)
-      return rows
+    }
+    if (row.length > 0) rows.push(row)
+    return rows
+  }
+
+  const rowWidth = (row: Block[]) =>
+    row.reduce((sum, b, i) => sum + b.w + (i ? CHART_GAP_X : 0), 0)
+
+  const blocks = new Map<number, Block>()
+  const build = (m: Member): Block => {
+    const cached = blocks.get(m.id)
+    if (cached) return cached
+    const selfW = measureName(m.name)
+    const kids = kidsMap.get(m.id) ?? []
+    if (kids.length === 0) {
+      const leaf: Block = {
+        w: selfW,
+        h: NODE_H,
+        rootX: selfW / 2,
+        nodes: [{ id: m.id, x: selfW / 2, y: 0 }],
+        verticals: [],
+        horizontals: [],
+      }
+      blocks.set(m.id, leaf)
+      return leaf
     }
 
-    const rowWidth = (row: Block[]) =>
-      row.reduce((sum, b, i) => sum + b.w + (i ? CHART_GAP_X : 0), 0)
-
-    const blocks = new Map<number, Block>()
-    const build = (m: Member): Block => {
-      const cached = blocks.get(m.id)
-      if (cached) return cached
-      const selfW = measureName(m.name)
-      const kids = kidsMap.get(m.id) ?? []
-      if (kids.length === 0) {
-        const leaf: Block = {
-          w: selfW,
-          h: NODE_H,
-          rootX: selfW / 2,
-          nodes: [{ id: m.id, x: selfW / 2, y: 0 }],
-          verticals: [],
-          horizontals: [],
-        }
-        blocks.set(m.id, leaf)
-        return leaf
-      }
-
-      const kidBlocks = kids.map(build)
-      const kidRows = packRows(kidBlocks)
-      const rowWidths = kidRows.map(rowWidth)
-      /* 块宽取父子二者宽的较大者，父落在子女区间正中 */
-      const w = Math.max(selfW, ...rowWidths)
-      const nodes: ChartNode[] = [{ id: m.id, x: w / 2, y: 0 }]
-      const verticals: Seg[] = []
-      const horizontals: Seg[] = []
-
-      /* 子块逐行落位：每行一条族线横贯块宽，竖线只落在族线与块缘，不穿字 */
-      let rowTop = CHART_ROW_H
-      let prevLeft: number | null = null
-      let prevRight = 0
-      let prevLineY = 0
-      for (const [ri, row] of kidRows.entries()) {
-        const rw = rowWidths[ri]
-        const rowH = Math.max(...row.map((b) => b.h))
-        const lineY = rowTop - 35
-        const left = (w - rw) / 2
-        let cursor = left
-        for (const b of row) {
-          for (const n of b.nodes) nodes.push({ id: n.id, x: cursor + n.x, y: rowTop + n.y })
-          for (const v of b.verticals) {
-            verticals.push({
-              x1: cursor + v.x1,
-              y1: rowTop + v.y1,
-              x2: cursor + v.x2,
-              y2: rowTop + v.y2,
-            })
-          }
-          for (const h of b.horizontals) {
-            horizontals.push({
-              x1: cursor + h.x1,
-              y1: rowTop + h.y1,
-              x2: cursor + h.x2,
-              y2: rowTop + h.y2,
-            })
-          }
-          /* 子块根自本行族线垂下 */
-          verticals.push({ x1: cursor + b.rootX, y1: lineY, x2: cursor + b.rootX, y2: rowTop })
-          cursor += b.w + CHART_GAP_X
-        }
-        /* 族线覆盖本行诸子；换行时由上一行族线的端点续下来 */
-        const lineL = left
-        const lineR = left + rw
-        let linkX: number | null = null
-        if (prevLeft != null) {
-          const lo = Math.max(prevLeft, lineL)
-          const hi = Math.min(prevRight, lineR)
-          linkX = lo <= hi ? lo : lineL
-        }
-        const segL = linkX == null ? lineL : Math.min(lineL, linkX)
-        const segR = linkX == null ? lineR : Math.max(lineR, linkX)
-        horizontals.push({ x1: segL, y1: lineY, x2: segR, y2: lineY })
-        if (linkX == null) {
-          /* 首行：父自姓名下端正中垂到族线 */
-          verticals.push({ x1: w / 2, y1: NODE_H, x2: w / 2, y2: lineY })
-        } else {
-          verticals.push({ x1: linkX, y1: prevLineY, x2: linkX, y2: lineY })
-        }
-        prevLeft = segL
-        prevRight = segR
-        prevLineY = lineY
-        rowTop += rowH + CHART_ROW_GAP
-      }
-
-      const h = rowTop - CHART_ROW_GAP
-      const block: Block = { w, h, rootX: w / 2, nodes, verticals, horizontals }
-      blocks.set(m.id, block)
-      return block
-    }
-
-    const rootBlocks = roots.map(build)
-    /* 顶层按可用宽逐块装箱：宽子树自带一整行，图的总体宽度不超纸面 */
-    const rows = packRows(rootBlocks)
-    const rowWidths = rows.map(rowWidth)
-    const width = Math.max(320, Math.ceil(Math.max(0, ...rowWidths) + 24))
-
-    const pos = new Map<number, { x: number; y: number }>()
+    const kidBlocks = kids.map(build)
+    const kidRows = packRows(kidBlocks)
+    const rowWidths = kidRows.map(rowWidth)
+    /* 块宽取父子二者宽的较大者，父落在子女区间正中 */
+    const w = Math.max(selfW, ...rowWidths)
+    const nodes: ChartNode[] = [{ id: m.id, x: w / 2, y: 0 }]
     const verticals: Seg[] = []
     const horizontals: Seg[] = []
-    let y = 0
-    for (const row of rows) {
-      const rw = rowWidth(row)
+
+    /* 子块逐行落位：每行一条族线横贯块宽，竖线只落在族线与块缘，不穿字 */
+    let rowTop = CHART_ROW_H
+    let prevLeft: number | null = null
+    let prevRight = 0
+    let prevLineY = 0
+    for (const [ri, row] of kidRows.entries()) {
+      const rw = rowWidths[ri]
       const rowH = Math.max(...row.map((b) => b.h))
-      let cursor = (width - 24 - rw) / 2
+      const lineY = rowTop - 35
+      const left = (w - rw) / 2
+      let cursor = left
       for (const b of row) {
-        for (const n of b.nodes) pos.set(n.id, { x: cursor + n.x, y: y + n.y })
+        for (const n of b.nodes) nodes.push({ id: n.id, x: cursor + n.x, y: rowTop + n.y })
         for (const v of b.verticals) {
-          verticals.push({ x1: cursor + v.x1, y1: y + v.y1, x2: cursor + v.x2, y2: y + v.y2 })
+          verticals.push({
+            x1: cursor + v.x1,
+            y1: rowTop + v.y1,
+            x2: cursor + v.x2,
+            y2: rowTop + v.y2,
+          })
         }
         for (const h of b.horizontals) {
-          horizontals.push({ x1: cursor + h.x1, y1: y + h.y1, x2: cursor + h.x2, y2: y + h.y2 })
+          horizontals.push({
+            x1: cursor + h.x1,
+            y1: rowTop + h.y1,
+            x2: cursor + h.x2,
+            y2: rowTop + h.y2,
+          })
         }
+        /* 子块根自本行族线垂下 */
+        verticals.push({ x1: cursor + b.rootX, y1: lineY, x2: cursor + b.rootX, y2: rowTop })
         cursor += b.w + CHART_GAP_X
       }
-      y += rowH + CHART_ROW_GAP
+      /* 族线覆盖本行诸子；换行时由上一行族线的端点续下来 */
+      const lineL = left
+      const lineR = left + rw
+      let linkX: number | null = null
+      if (prevLeft != null) {
+        const lo = Math.max(prevLeft, lineL)
+        const hi = Math.min(prevRight, lineR)
+        linkX = lo <= hi ? lo : lineL
+      }
+      const segL = linkX == null ? lineL : Math.min(lineL, linkX)
+      const segR = linkX == null ? lineR : Math.max(lineR, linkX)
+      horizontals.push({ x1: segL, y1: lineY, x2: segR, y2: lineY })
+      if (linkX == null) {
+        /* 首行：父自姓名下端正中垂到族线 */
+        verticals.push({ x1: w / 2, y1: NODE_H, x2: w / 2, y2: lineY })
+      } else {
+        verticals.push({ x1: linkX, y1: prevLineY, x2: linkX, y2: lineY })
+      }
+      prevLeft = segL
+      prevRight = segR
+      prevLineY = lineY
+      rowTop += rowH + CHART_ROW_GAP
     }
 
-    const height = Math.max(180, y - CHART_ROW_GAP + 12)
+    const h = rowTop - CHART_ROW_GAP
+    const block: Block = { w, h, rootX: w / 2, nodes, verticals, horizontals }
+    blocks.set(m.id, block)
+    return block
+  }
 
-    const paths: string[] = []
-    for (const v of verticals) paths.push(`M ${v.x1} ${v.y1} V ${v.y2}`)
-    for (const h of horizontals) paths.push(`M ${h.x1} ${h.y1} H ${h.x2}`)
+  const rootBlocks = roots.map(build)
+  /* 顶层按可用宽逐块装箱：宽子树自带一整行，图的总体宽度不超纸面 */
+  const rows = packRows(rootBlocks)
+  const rowWidths = rows.map(rowWidth)
+  const width = Math.max(320, Math.ceil(Math.max(0, ...rowWidths) + 24))
 
-    return { people, pos, paths, width, height }
-  }, [volume])
+  const pos = new Map<number, { x: number; y: number }>()
+  const verticals: Seg[] = []
+  const horizontals: Seg[] = []
+  let y = 0
+  for (const row of rows) {
+    const rw = rowWidth(row)
+    const rowH = Math.max(...row.map((b) => b.h))
+    let cursor = (width - 24 - rw) / 2
+    for (const b of row) {
+      for (const n of b.nodes) pos.set(n.id, { x: cursor + n.x, y: y + n.y })
+      for (const v of b.verticals) {
+        verticals.push({ x1: cursor + v.x1, y1: y + v.y1, x2: cursor + v.x2, y2: y + v.y2 })
+      }
+      for (const h of b.horizontals) {
+        horizontals.push({ x1: cursor + h.x1, y1: y + h.y1, x2: cursor + h.x2, y2: y + h.y2 })
+      }
+      cursor += b.w + CHART_GAP_X
+    }
+    y += rowH + CHART_ROW_GAP
+  }
+
+  const height = Math.max(180, y - CHART_ROW_GAP + 12)
+
+  const paths: string[] = []
+  for (const v of verticals) paths.push(`M ${v.x1} ${v.y1} V ${v.y2}`)
+  for (const h of horizontals) paths.push(`M ${h.x1} ${h.y1} H ${h.x2}`)
+
+  return { people, pos, paths, width, height }
 }
 
-function ComboChart({ volume, bloodIds }: { volume: Volume; bloodIds: Set<number> }) {
-  const { people, pos, paths, width, height } = useVolumeChart(volume)
+type VolumeChart = ReturnType<typeof buildVolumeChart>
+
+function ComboChart({
+  chart,
+  viewW,
+  bloodIds,
+}: {
+  chart: VolumeChart
+  /** 全册统一视图宽：末卷内容窄，若按自身宽铺满图区，字会比首页大一圈 */
+  viewW: number
+  bloodIds: Set<number>
+}) {
+  const { people, pos, paths, width, height } = chart
   return (
-    <svg className="combo-frame__chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="卷内吊线图">
-      {paths.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="#c9c4b8" strokeWidth="1" />
-      ))}
-      {people.map((m) => {
-        const p = pos.get(m.id)
-        if (!p) return null
-        const blood = bloodIds.has(m.id)
-        const cy = p.y + NODE_H / 2
-        const nameW = measureName(m.name) - CHART_PAD_X * 2
-        return (
-          <g key={m.id} className={blood ? undefined : "ext"}>
-            <circle
-              cx={p.x - nameW / 2 + 3.5}
-              cy={cy}
-              r="2.6"
-              fill={blood ? "#b3261e" : "none"}
-              stroke={blood ? "#b3261e" : "#8f8a80"}
-              strokeWidth="1"
-            />
-            <text x={p.x + 2} y={cy + 4.5} textAnchor="middle" fontSize={CHART_FONT} fill="#1c1c1c">
-              {m.name}
-            </text>
-          </g>
-        )
-      })}
+    <svg
+      className="combo-frame__chart"
+      viewBox={`0 0 ${viewW} ${height}`}
+      role="img"
+      aria-label="卷内吊线图"
+    >
+      {/* 内容在统一视图内水平居中；首卷 viewW 即其自身宽，位置与改动前一致 */}
+      <g transform={`translate(${(viewW - width) / 2} 0)`}>
+        {paths.map((d, i) => (
+          <path key={i} d={d} fill="none" stroke="#c9c4b8" strokeWidth="1" />
+        ))}
+        {people.map((m) => {
+          const p = pos.get(m.id)
+          if (!p) return null
+          const blood = bloodIds.has(m.id)
+          const cy = p.y + NODE_H / 2
+          const nameW = measureName(m.name) - CHART_PAD_X * 2
+          /* 朱点圆心：姓名文字左缘约在 p.x + 2 - nameW/2（textAnchor=middle）。
+             旧值 +3.5 落在文字左缘右侧 1.5px，5px 的朱点直接压住首字；
+             改到左缘外 3px（再让出半径 2.6），朱点与姓名之间留 3px 空隙，
+             且圆心仍在块左 padding 内，不会越界压到相邻支。 */
+          const dotX = p.x - nameW / 2 - 3.6
+          return (
+            <g key={m.id} className={blood ? undefined : "ext"}>
+              <circle
+                cx={dotX}
+                cy={cy}
+                r="2.6"
+                fill={blood ? "#b3261e" : "none"}
+                stroke={blood ? "#b3261e" : "#8f8a80"}
+                strokeWidth="1"
+              />
+              <text x={p.x + 2} y={cy + 4.5} textAnchor="middle" fontSize={CHART_FONT} fill="#1c1c1c">
+                {m.name}
+              </text>
+            </g>
+          )
+        })}
+      </g>
     </svg>
   )
 }
@@ -776,6 +798,14 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
     [members, family.branches],
   )
   const volumes = useVolumes(ordered, frameMembers)
+  /* 各卷图共用同一视图宽：末卷人数少、内容窄，若按自身宽铺满图区，
+     字会被放得比首页大一圈（表现为第二页字体过大）。基准取全册最宽卷，
+     首卷通常就是最宽者，故首页排版不变。 */
+  const charts = useMemo(() => volumes.map(buildVolumeChart), [volumes])
+  const chartViewW = useMemo(
+    () => Math.max(CHART_MAX_W + 24, ...charts.map((c) => c.width)),
+    [charts],
+  )
   const { allById, allChildrenOf } = useMemo(() => {
     const map = new Map(allMembers.map((m) => [m.id, m]))
     return {
@@ -807,7 +837,7 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
 
   return (
     <>
-      {volumes.map((volume) => (
+      {volumes.map((volume, vi) => (
         <section className="print-sheet print-sheet--combo" key={volume.index}>
           <SheetHead family={family} volume={volume} total={volumes.length} />
           <div className="combo-frame">
@@ -826,7 +856,7 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
               <i>{`公元二〇二六年\u3000岁次丙午`}</i>
             </div>
             <div className="combo-frame__chart-wrap">
-              <ComboChart volume={volume} bloodIds={bloodIds} />
+              <ComboChart chart={charts[vi]} viewW={chartViewW} bloodIds={bloodIds} />
             </div>
           </div>
           <SheetFoot volume={volume} total={volumes.length} />

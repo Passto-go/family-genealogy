@@ -24,10 +24,10 @@ export function SiteFooter({ icpNumber, policeNumber }: SiteFooterProps) {
   return (
     <footer className="border-t border-paper-300 bg-paper-100">
       <div className="mx-auto flex max-w-[1320px] flex-col gap-8 px-6 py-10 sm:flex-row sm:items-end sm:justify-between">
-        {/* 左侧：版权（版权归 Clantree Contributors 所有）· 许可声明/隐私说明 · 备案号 */}
+        {/* 左侧：版权（版权归 Panda_Q 所有）· 许可声明/隐私说明 · 备案号 */}
         <div className="flex flex-col gap-3">
           <p className="text-[12px] tracking-[0.12em] text-ink-600">
-            Copyright© 2026 Clantree Contributors
+            Copyright© 2026 Panda_Q
           </p>
 
           {/* 单行紧凑书写：各字段间仅以「·」连接，不插入任何空格；信息反馈不带图标 */}

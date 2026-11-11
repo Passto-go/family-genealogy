@@ -1,4 +1,4 @@
-import { Chapter, H3, LegalDoc, Note, UL, type TocItem } from "@/components/site/LegalDoc"
+import { Chapter, CopyEmail, H3, LegalDoc, Note, UL, type TocItem } from "@/components/site/LegalDoc"
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { useAnalytics } from "@/lib/site-config"
@@ -63,7 +63,7 @@ export default function Terms() {
           <Note label="第三方分析服务">
             本服务接入的第三方分析/广告服务（依后台启用状态）：
             {enabledAnalytics.map((a) => PROVIDER_META[a.key].label).join("、")}
-            。相关脚本仅在您于站点底部提示中选择「接受」后加载；其数据收集范围、用途、Cookie 使用与您的选择权，详见
+            。这些服务仅在您于站点底部提示中选择「接受」后才会启用；其数据收集范围、用途、Cookie 使用与您的选择权，详见
             <Link to="/privacy" className="text-gold-700 underline underline-offset-2 hover:text-gold-800">
               《隐私说明》
             </Link>
@@ -94,7 +94,7 @@ export default function Terms() {
 
       <Chapter id="terms-5" title="五、内容的所有权与授权">
         <p>
-          本站所载族谱内容（包括家族文献、成员档案、谱序、家训、字辈派语及其编排成果）的著作权及相关权利，归运营方 Clantree Contributors 或相关权利人所有，自内容发布之日起受法律保护。
+          本站所载族谱内容（包括家族文献、成员档案、谱序、家训、字辈派语及其编排成果）的著作权及相关权利，归运营方 Panda_Q 或相关权利人所有，自内容发布之日起受法律保护。
         </p>
         <p>
           为展示与存储之目的，运营方对上述内容进行使用、存储与展示。您保证在访问、传播本站内容时不侵犯任何第三方的合法权益。
@@ -166,13 +166,19 @@ export default function Terms() {
             族谱内容由运营方整理与维护，相关史料的真实性与准确性以资料来源为准。运营方已尽合理审核义务，但不对内容的完整性与准确性作绝对保证；
           </li>
           <li>
+            本服务为部分族谱提供访问口令（密码）保护功能。设有口令的族谱，其口令的生成、发放、管理与告知，由该族谱的管理员或相关授权族人自行负责。因口令保管不当、主动泄露或分享导致族谱隐私信息外泄的，运营方在已采取脱敏溯源水印、加密存储等基本技术保护措施的前提下，不承担由此引发的直接或间接法律责任；如发现口令存在被暴力破解的风险，运营方有权采取临时限制访问等安全措施。
+          </li>
+          <li>
             因网络、设备、第三方服务或不可抗力导致的服务中断或数据损失，运营方在合理范围内免除责任；
           </li>
           <li>
             本站运行于第三方云服务商（阿里云）提供的云服务器，机房、网络、供电与存储硬件等基础设施由该服务商按其服务条款负责；
             因云服务不可用导致的中断，运营方将在自身可控范围内配合恢复，并在法律规定的范围内承担责任；
           </li>
-          <li>本服务仅供家族文化传承与信息查询之用，不构成法律、医疗或其他专业意见。</li>
+          <li>本服务仅供家族文化传承与信息查询之用，不构成法律、医疗或其他专业意见；</li>
+          <li>
+            本站依《网络安全法》留存服务器访问日志（含来源 IP、访问时间、请求路径、浏览器类型与来源页面）不少于六个月，仅用于安全防护、故障排查与依法配合有权机关调查；除依据法律规定的程序与文书外，运营方不向任何第三方提供访客信息。
+          </li>
         </UL>
       </Chapter>
 
@@ -214,9 +220,10 @@ export default function Terms() {
           >
             admin@example.com
           </a>
+          <CopyEmail email="admin@example.com" />
         </p>
         <Note label="提示">
-          点击邮箱地址将调用设备默认邮件客户端；如未响应，请复制地址后通过网页邮箱发送。
+          未配置邮件客户端的设备，点击邮箱可能无响应；可点邮箱旁的「复制」按钮复制地址，再通过网页邮箱发送。
         </Note>
         <p className="text-[12.5px] text-muted-foreground">
           本声明为中文文本。如提供其他语言版本，以中文版本为准。

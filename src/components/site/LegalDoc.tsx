@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { Link } from "react-router-dom"
-import { List, X } from "lucide-react"
+import { Check, Copy, List, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /** 目录条目 */
@@ -203,6 +203,58 @@ export function C({ children }: { children: ReactNode }) {
 }
 
 /**
+ * 邮箱复制按钮：紧跟邮箱地址的小按钮，点击后复制到剪贴板并短暂提示「邮箱已复制」。
+ * 针对手机端多数设备未配置邮件客户端、点 mailto 无响应的情况，提供更可靠的取址方式。
+ */
+export function CopyEmail({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false)
+  const timerRef = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => window.clearTimeout(timerRef.current), [])
+
+  async function handleCopy() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(email)
+      } else {
+        // 非安全上下文（如备案期 HTTP 入口）降级到 execCommand
+        const ta = document.createElement("textarea")
+        ta.value = email
+        ta.style.position = "fixed"
+        ta.style.opacity = "0"
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand("copy")
+        document.body.removeChild(ta)
+      }
+    } catch {
+      // 复制失败也不打断阅读；反馈仍给出，极端环境可长按邮箱手动复制
+    }
+    setCopied(true)
+    window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleCopy()}
+      aria-label="复制邮箱地址"
+      title="复制邮箱地址"
+      className={cn(
+        "ml-2 inline-flex h-7 items-center gap-1.5 rounded-[7px] border px-2.5 align-middle text-[12px] tracking-[0.02em] transition-colors",
+        copied
+          ? "border-emerald-600/40 bg-emerald-50 text-emerald-700"
+          : "border-paper-300 text-ink-600 hover:border-ink-400 hover:text-ink-800",
+      )}
+    >
+      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+      {copied ? "邮箱已复制" : "复制"}
+    </button>
+  )
+}
+
+/**
  * 法律文档页外壳：页头 + 目录悬浮层 + 正文 + 返回链接。
  * 顶部导航常驻，不再单独提供返回顶部按钮。
  *
@@ -242,6 +294,13 @@ export function LegalDoc({
   const panelRef = useRef<HTMLElement>(null)
   const pendingScrollRef = useRef<string | null>(null)
   const wasOpenRef = useRef(false)
+
+  // 进入文档页复位到顶部：从站内底部页脚点入时，浏览器会保留上一页滚动位置，
+  // 否则页面会打开在中间而非开头。behavior:"instant" 绕开 index.css 的 smooth，
+  // 并中止上一页尚未结束的平滑滚动。
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" })
+  }, [])
 
   // 移动端目录按钮：直接按当前可视高度算像素 top。
   // % 与 svh 在部分移动浏览器（含 Safari 设备模拟）里会解析出远大于可视高度的位置，

@@ -38,7 +38,7 @@ export const DEFAULT_ANALYTICS_NOTICES: Record<AnalyticsProviderKey, AnalyticsNo
     cookieExpiry:
       "百度统计写入的主要 Cookie 包括 _hm_lvt_<站点ID> 与 _hm_lpvt_<站点ID>。其中 _hm_lvt_* 保存期约 13 个月（按首次访问日计算，每次访问顺延刷新）；_hm_lpvt_* 为会话级标识，浏览器关闭即失效。具体名称与有效期以百度隐私政策最新说明为准。",
     crossBorder: "服务器位于中国境内，不涉及向境外提供您的个人信息。",
-    choice: "在浏览器或扩展中屏蔽 hm.baidu.com 域名即停止统计脚本加载，不影响浏览、检索与打印。",
+    choice: "在浏览器或扩展中屏蔽 hm.baidu.com 域名即停止对应统计服务，不影响浏览、检索与打印。",
     block: "hm.baidu.com",
   },
   umeng: {

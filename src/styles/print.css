@@ -146,10 +146,12 @@
   display: flex; align-items: stretch; margin-top: 10px;
   border: var(--euro-line-thin) solid var(--euro-ink);
 }
-/* 小传区宽度随内容走，不再用 56% 硬卡：分卷时已按纸宽算过每卷列数，
-   宽度本就在预算内；一旦用百分比封顶，屏显窄框（56% 约 660px）会把最左一栏
-   挤到左边界之外，表现为最外侧文字被边框压住、传文缺字。 */
-.combo-frame__bio { flex: 0 0 auto; min-width: 0; overflow: hidden; }
+/* 小传区宽度定死为分卷预算宽（MAX_BIO_WIDTH=820，两侧联动）：末卷列数少，
+   若让它按内容收窄，图区就被剩下的空间撑宽，同一份 viewBox 会被放得更大，
+   表现为末页字号明显大于首页。定宽后各卷图区等宽、缩放一致；
+   末卷内容靠右（.combo-cols 为 row-reverse），多出的留白落在左侧。
+   仍不用百分比封顶：百分比可能小于内容实宽，会把最左一栏挤出边界。 */
+.combo-frame__bio { flex: 0 0 auto; min-width: 820px; overflow: hidden; }
 /* 屏显保底宽：一整框要 小传 + 书脊 + 吊线图 都放开才不被互相挤压。
    窗口不够宽时改为纸面横向滚动（.print-body 已是 overflow-x:auto），
    版式与 A3 打印一致；打印时下列 min-width 归零，按纸宽出页。 */

@@ -24,6 +24,12 @@ import {
   type SubmissionStatus,
   rowToDomain,
 } from "./types.js"
+import {
+  FAMILY_COLUMNS,
+  familyValue,
+  FAMILY_SELECT,
+  MEMBER_SELECT,
+} from "./shared.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SCHEMA_PATH = path.join(__dirname, "..", "schema.sql")
@@ -37,46 +43,7 @@ function bind(value: unknown): SqlValue {
   return value as SqlValue
 }
 
-const FAMILY_COLUMNS: Record<keyof FamilyInput, string> = {
-  slug: "slug",
-  tag: "tag",
-  domain: "domain",
-  visibility: "visibility",
-  accessPasswordHash: "access_password_hash",
-  isPrimary: "is_primary",
-  theme: "theme",
-  surname: "surname",
-  name: "name",
-  hallName: "hall_name",
-  county: "county",
-  originPlace: "origin_place",
-  founderName: "founder_name",
-  foundedYear: "founded_year",
-  intro: "intro",
-  motto: "motto",
-  rules: "rules",
-  preface: "preface",
-  generationPoem: "generation_poem",
-  generationPoemStart: "generation_poem_start",
-  branches: "branches",
-  branchHeads: "branch_heads",
-  coverImage: "cover_image",
-  footerText: "footer_text",
-  icpNumber: "icp_number",
-  policeNumber: "police_number",
-  showExtendedLineage: "show_extended_lineage",
-  isPublished: "is_published",
-  printIncludeExtended: "print_include_extended",
-}
-
-function familyValue(key: keyof FamilyInput, raw: unknown): SqlValue {
-  if (key === "branches") return JSON.stringify(Array.isArray(raw) ? raw : [])
-  if (key === "branchHeads")
-    return JSON.stringify(raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {})
-  if (key === "isPrimary" || key === "isPublished" || key === "printIncludeExtended")
-    return raw ? 1 : 0
-  return bind(raw)
-}
+// family 列映射(FAMILY_COLUMNS)与值转换(familyValue)已抽到 ./shared.ts
 
 export function createLocalRepo(dbFile: string): Repo {
   fs.mkdirSync(path.dirname(dbFile), { recursive: true })
@@ -277,15 +244,7 @@ export function createLocalRepo(dbFile: string): Repo {
     }
   }
 
-  // 联表取维护人姓名（创建人 / 最近修改人），管理员被删后姓名快照仍存在
-  const FAMILY_SELECT = `SELECT f.*, cu.username AS created_by_name, uu.username AS updated_by_name
-    FROM family f
-    LEFT JOIN admin_user cu ON cu.id = f.created_by
-    LEFT JOIN admin_user uu ON uu.id = f.updated_by`
-  const MEMBER_SELECT = `SELECT m.*, cu.username AS created_by_name, uu.username AS updated_by_name
-    FROM member m
-    LEFT JOIN admin_user cu ON cu.id = m.created_by
-    LEFT JOIN admin_user uu ON uu.id = m.updated_by`
+  // FAMILY_SELECT / MEMBER_SELECT 已抽到 ./shared.ts
 
   const insertFamily = (input: FamilyInput, actorId: number | null): number => {
     const keys = Object.keys(FAMILY_COLUMNS) as (keyof FamilyInput)[]

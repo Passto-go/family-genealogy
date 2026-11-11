@@ -1,6 +1,8 @@
 /**
  * Cloudflare D1 实现（预留）。
  *
+ * 不含 local.ts 的旧库在线迁移：本实现假设以完整 schema.sql 全新建库，
+ * 老库升级迁移由 local.ts 负责；schema 真相单一（schema.sql），故无需双份 DDL。
  * 与 local.ts 共用同一份 schema.sql 与同一套 SQL，切换运行时无需改动路由。
  * 状态（2026-11-07）：主线为阿里云 ECS，三年内不迁 Cloudflare，本文件保留作迁移参考；
  * 已纳入服务端类型检查，但仍未在 `wrangler dev` 实测。复核清单见
@@ -29,6 +31,12 @@ import {
   type SubmissionStatus,
   rowToDomain,
 } from "./types.js"
+import {
+  FAMILY_COLUMNS,
+  familyValue,
+  FAMILY_SELECT,
+  MEMBER_SELECT,
+} from "./shared.js"
 
 interface D1ExecResult {
   results?: unknown[]
@@ -47,37 +55,7 @@ export interface D1Like {
   exec(query: string): Promise<D1ExecResult>
 }
 
-const FAMILY_COLUMNS: Record<keyof FamilyInput, string> = {
-  slug: "slug",
-  tag: "tag",
-  domain: "domain",
-  visibility: "visibility",
-  accessPasswordHash: "access_password_hash",
-  isPrimary: "is_primary",
-  theme: "theme",
-  surname: "surname",
-  name: "name",
-  hallName: "hall_name",
-  county: "county",
-  originPlace: "origin_place",
-  founderName: "founder_name",
-  foundedYear: "founded_year",
-  intro: "intro",
-  motto: "motto",
-  rules: "rules",
-  preface: "preface",
-  generationPoem: "generation_poem",
-  generationPoemStart: "generation_poem_start",
-  branches: "branches",
-  branchHeads: "branch_heads",
-  coverImage: "cover_image",
-  footerText: "footer_text",
-  icpNumber: "icp_number",
-  policeNumber: "police_number",
-  showExtendedLineage: "show_extended_lineage",
-  isPublished: "is_published",
-  printIncludeExtended: "print_include_extended",
-}
+// family 列映射(FAMILY_COLUMNS)与值转换(familyValue)已抽到 ./shared.ts
 
 function bindable(value: unknown): string | number | null {
   if (value === undefined || value === null) return null
@@ -85,14 +63,7 @@ function bindable(value: unknown): string | number | null {
   return value as string | number
 }
 
-function familyValue(key: keyof FamilyInput, raw: unknown): string | number | null {
-  if (key === "branches") return JSON.stringify(Array.isArray(raw) ? raw : [])
-  if (key === "branchHeads")
-    return JSON.stringify(raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {})
-  if (key === "isPrimary" || key === "isPublished" || key === "printIncludeExtended")
-    return raw ? 1 : 0
-  return bindable(raw)
-}
+// family 值转换(familyValue)已抽到 ./shared.ts
 
 export function createD1Repo(db: D1Like): Repo {
   const rows = async (sql: string, ...params: unknown[]) => {
@@ -104,15 +75,7 @@ export function createD1Repo(db: D1Like): Repo {
     return (result ?? null) as Record<string, unknown> | null
   }
 
-  // 联表取维护人姓名（创建人 / 最近修改人），管理员被删后姓名快照仍存在
-  const FAMILY_SELECT = `SELECT f.*, cu.username AS created_by_name, uu.username AS updated_by_name
-    FROM family f
-    LEFT JOIN admin_user cu ON cu.id = f.created_by
-    LEFT JOIN admin_user uu ON uu.id = f.updated_by`
-  const MEMBER_SELECT = `SELECT m.*, cu.username AS created_by_name, uu.username AS updated_by_name
-    FROM member m
-    LEFT JOIN admin_user cu ON cu.id = m.created_by
-    LEFT JOIN admin_user uu ON uu.id = m.updated_by`
+  // FAMILY_SELECT / MEMBER_SELECT 已抽到 ./shared.ts
 
   return {
     async getFamilyById(id): Promise<Family | null> {

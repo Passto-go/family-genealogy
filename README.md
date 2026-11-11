@@ -124,12 +124,18 @@ npm run build:demo    # 构建到 dist-demo/，按子路径 /family-genealogy/ �
 | `npm run preview` | 预览构建产物 |
 | `npm run audit:sync` | 由 `docs/audits/*.json` 重新生成前台安全检查数据 |
 | `npm run audit:generation` | 批量校正族人世次（`scripts/fix-member-generation.mjs`） |
+| `npm test` | 运行 vitest 单元测试 |
+
+## 测试与持续集成
+
+- 单元测试：`npm test`（vitest），覆盖农历转换、世系排序、导入校验（含父母边成环检测）、径向布局等纯逻辑
+- CI：`.github/workflows/ci.yml` 在每次推送到 `main` 与 PR 时自动运行 ESLint、生产构建（含类型检查）与单元测试；并以 `npm audit` 做依赖漏洞审计（高危级，不阻断流水线）
 
 ## 目录结构
 
 ```
 server/            后端：路由、鉴权、限流、SQLite 数据层、示例数据
-  repo/            数据访问抽象与实现（local.ts + types.ts）
+  repo/            数据访问抽象与实现（local.ts + d1.ts + shared.ts + types.ts）
 src/pages/         前台：族谱总目 / 首页 / 世系图 / 家族文献 / 谱页 / 法务
 src/admin/         后台：家族、成员、反馈、域名、站点、管理员、审计日志
 src/lib/           接口封装、租户上下文、访问门禁、导入导出
@@ -161,6 +167,6 @@ scripts/           构建期工具：审计数据生成、世次校正、公开�
 
 ## 许可证
 
-GNU Affero General Public License v3.0，署名 Clantree Contributors。全文见 `LICENSE`。
+GNU Affero General Public License v3.0，署名 Panda_Q。全文见 `LICENSE`。
 
 AGPL 允许商业使用，但修改后通过网络向他人提供服务时，也必须以同样许可公开源代码。

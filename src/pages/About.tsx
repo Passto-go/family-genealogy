@@ -1,6 +1,7 @@
+import { useLayoutEffect } from "react"
 import { Link } from "react-router-dom"
 import { BookOpen, FileText, Share2, Users } from "lucide-react"
-import { Note } from "@/components/site/LegalDoc"
+import { CopyEmail, Note } from "@/components/site/LegalDoc"
 import { useAnalytics } from "@/lib/site-config"
 import { PROVIDER_META } from "@/lib/analytics"
 
@@ -53,6 +54,10 @@ const FEATURES = [
 export default function About() {
   const analytics = useAnalytics()
   const enabledAnalytics = analytics.filter((a) => a.enabled)
+  // 进入页面复位到顶部，避免从底部页脚点入时保留上一页滚动位置
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" })
+  }, [])
   return (
     <div className="mx-auto max-w-[860px] px-6 py-16 sm:py-24">
       <div>
@@ -124,7 +129,7 @@ export default function About() {
                 <>
                   页面与字体皆由本站与访客设备自行提供，不依赖第三方 CDN；另接入
                   {enabledAnalytics.map((a) => PROVIDER_META[a.key].label).join("、")}
-                  以观访问之数，其脚本仅在您于站点底部提示中选择「接受」后加载，拒绝或屏蔽即不生效，亦无碍翻阅。
+                  以观访问之数，其服务仅在您于站点底部提示中选择「接受」后才会生效，拒绝或屏蔽即不生效，亦无碍翻阅。
                 </>
               ) : (
                 <>
@@ -137,7 +142,7 @@ export default function About() {
             <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-gold-600" />
             <span>
               溯源水印由脱敏后的访客 IP（仅存前两段）、当地日期与站名即时拼出，仅用于内容外泄时辨其来源，
-              不写入数据库、不落日志。
+              水印文字不写入数据库；该次访问本身作为普通请求进入服务器访问日志，依《网络安全法》留存不少于六个月，仅作安全防护与溯源之用。
             </span>
           </li>
           <li className="flex gap-2.5">
@@ -151,7 +156,7 @@ export default function About() {
             to="/privacy"
             className="mx-1 text-gold-700 underline underline-offset-2 hover:text-gold-800"
           >
-            隐私说明
+            《隐私说明》
           </Link>
           。
         </p>
@@ -179,9 +184,10 @@ export default function About() {
             >
               admin@example.com
             </a>
+            <CopyEmail email="admin@example.com" />
           </p>
           <Note label="提示">
-            点击邮箱地址将调用设备默认邮件客户端；如未响应，请复制地址后通过网页邮箱发送。
+            未配置邮件客户端的设备，点击邮箱可能无响应；可点邮箱旁的「复制」按钮复制地址，再通过网页邮箱发送。
           </Note>
         </div>
       </section>
