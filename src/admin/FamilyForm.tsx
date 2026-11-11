@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { copyText } from "@/lib/clipboard"
 import { formatBeijing } from "@/lib/time"
 import {
   EMPTY_FAMILY,
@@ -352,6 +353,7 @@ export default function FamilyForm() {
   const [afterGeneratedNav, setAfterGeneratedNav] = useState<string | null>(null)
   const [rotating, setRotating] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
   // 房主（先祖）下拉所需的族人列表（仅编辑已有族谱时加载）
   const [memberOptions, setMemberOptions] = useState<{ id: number; name: string; generation: number }[]>(
     [],
@@ -521,9 +523,14 @@ export default function FamilyForm() {
           setGeneratedPassword(result.accessPassword)
           setShowGenerated(true)
         }
+        const reusedPassword = draft.visibility === "password" && !result.accessPassword
         setMessage({
           tone: "ok",
-          text: result.accessPassword ? "已保存，访问口令已自动生成" : "已保存，前台即时生效",
+          text: result.accessPassword
+            ? "已保存，访问口令已自动生成"
+            : reusedPassword
+              ? "已保存，沿用原访问口令；如已遗失请点「重新生成」"
+              : "已保存，前台即时生效",
         })
       }
     } catch (error) {
@@ -554,18 +561,17 @@ export default function FamilyForm() {
 
   async function handleCopyPassword() {
     if (!generatedPassword) return
-    try {
-      await navigator.clipboard.writeText(generatedPassword)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setCopied(false)
-    }
+    const ok = await copyText(generatedPassword)
+    setCopyFailed(!ok)
+    setCopied(ok)
+    if (ok) setTimeout(() => setCopied(false), 2000)
   }
 
   function closeGenerated() {
     setShowGenerated(false)
     setGeneratedPassword(null)
+    setCopied(false)
+    setCopyFailed(false)
     const nav = afterGeneratedNav
     setAfterGeneratedNav(null)
     if (nav) navigate(nav, { replace: true })
@@ -760,7 +766,7 @@ export default function FamilyForm() {
             )}
             {draft.visibility === "password" ? (
               <span className="mt-1.5 block text-[10.5px] text-muted-foreground/80">
-                口令由系统随机生成，仅生成时展示一次明文；轮换后旧口令即时失效。
+                口令由系统随机生成，仅生成时展示一次明文；轮换后旧口令即时失效。切回「密码访问」时沿用现有口令，如已遗失请点「重新生成」。
               </span>
             ) : null}
           </label>
@@ -1018,12 +1024,22 @@ export default function FamilyForm() {
             <button
               type="button"
               onClick={() => void handleCopyPassword()}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-paper-300 px-3 py-1.5 text-[12px] text-ink-700 transition-colors hover:border-ink-400"
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border px-3 py-1.5 text-[12px] transition-colors",
+                copied
+                  ? "border-emerald-600/40 bg-emerald-50 text-emerald-700"
+                  : "border-paper-300 text-ink-700 hover:border-ink-400",
+              )}
             >
               <Copy className="size-3.5" />
               {copied ? "已复制" : "复制"}
             </button>
           </div>
+          {copyFailed ? (
+            <p role="status" className="text-[12px] leading-relaxed text-red-600">
+              当前环境不允许自动复制，请长按上方口令全选后手动复制。
+            </p>
+          ) : null}
           <DialogFooter>
             <button
               type="button"
