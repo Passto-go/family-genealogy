@@ -15,7 +15,6 @@ import AdminLayout from "@/admin/AdminLayout"
  */
 const Home = lazy(() => import("@/pages/Home"))
 const Genealogy = lazy(() => import("@/pages/Genealogy"))
-const PrintPage = lazy(() => import("@/pages/PrintPage"))
 const Literature = lazy(() => import("@/pages/Literature"))
 const Feedback = lazy(() => import("@/pages/Feedback"))
 const Privacy = lazy(() => import("@/pages/Privacy"))
@@ -124,16 +123,6 @@ export default function App() {
               <PublicLayout>
                 <Feedback />
               </PublicLayout>
-            }
-          />
-
-          {/* 谱页：独立纸面视图，只包 TenantProvider，不套 SiteLayout（无站点导航与水印） */}
-          <Route
-            path="/t/:slug/print"
-            element={
-              <TenantProvider>
-                <PrintPage />
-              </TenantProvider>
             }
           />
 

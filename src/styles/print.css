@@ -1,5 +1,5 @@
 /* ==========================================================================
-   谱页样式（/t/:slug/print）
+   谱面样式（世系图页面 6 档：欧式 / 欧苏 / 苏式 / 树形 / 卡片 / 垂丝）
    层级：tokens → layout → component → state → media
    同一属性只在一处声明；欧式不再挂 .print-sheet，消除覆盖链。
 
@@ -12,7 +12,7 @@
    打印 A3 横排     flex 页对     跨页并排          显示      两张 A4 合成 A3
    ========================================================================== */
 
-/* 纸张尺寸由 PrintPage 按所选尺寸动态注入 @page（A4 竖排 / A3 横排），不在此写死 */
+/* 纸张尺寸交给浏览器打印设置（样式内不再注入 @page）；纸面宽度随容器自适应 */
 
 /* ── ① tokens ───────────────────────────────────────────────────────────── */
 :root {
@@ -40,9 +40,55 @@
   /* 谱页整体统一宋体：正文、标尺、落款、工具栏一律同族，不再混用黑体 */
   font-family: var(--euro-serif);
 }
-.print-loading {
-  display: flex; min-height: 70vh; align-items: center; justify-content: center;
-  gap: 10px; font-size: 12.5px; letter-spacing: .16em; color: #6b787d;
+/* 搜索命中：谱页纸面统一用橙红色强调（打印仍可辨；SVG 文字另由 fill 属性处理） */
+.print-hit { color: #c2410c !important; }
+
+/* 嵌入世系图页面时的谱页外壳：高度取内容，滚动交给外层 ZoomShell */
+.print-page--embed {
+  min-height: 0; height: auto; padding-bottom: 0;
+  overflow: visible; color-scheme: light;
+}
+
+/* 纸面档的缩放/拖拽外壳：按钮条 + 可平移视口 */
+.zoom-shell { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+.zoom-shell__bar {
+  display: flex; align-items: center; gap: 6px; padding: 5px 10px;
+  border-bottom: 1px solid #e6dfd2; background: #f7f4ec; color: #4a4238;
+}
+.zoom-shell__bar button {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 22px; width: 22px; border-radius: 4px; border: 1px solid #d9d0c0;
+  background: #fffdf8; color: #4a4238; transition: background .15s;
+}
+.zoom-shell__bar button:hover { background: #efe8da; }
+/* 百分比：加浅底药丸 + 深色字，日间/夜间各自给足对比度 */
+.zoom-shell__value {
+  min-width: 42px; padding: 1px 7px; border-radius: 999px;
+  background: rgba(28, 28, 28, .08); color: #322c24;
+  text-align: center; font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+}
+/* 工具栏内嵌的缩放条：去底边框与背景，与外衍提示同排 */
+.zoom-shell__bar--inline { padding: 0; border: 0; background: transparent; gap: 4px; }
+.zoom-shell__bar--inline .zoom-shell__value { min-width: 40px; }
+
+/* 夜间：文字转浅、药丸转半透明白，按钮换成深色描边 */
+.dark .zoom-shell__value { background: rgba(255, 255, 255, .18); color: #f5f0e6; }
+.dark .zoom-shell__bar--inline button {
+  border-color: #4b5d66; background: #22343c; color: #ece6da;
+}
+.dark .zoom-shell__bar--inline button:hover { background: #2d444e; }
+.zoom-shell__viewport { flex: 1 1 auto; min-height: 0; overflow: auto; cursor: grab; }
+.zoom-shell__viewport:active { cursor: grabbing; }
+.zoom-shell__inner { display: block; }
+
+@media print {
+  /* 打印必须整幅贴合纸面：取消图区的 1:1 最小宽与横向滚动 */
+  .combo-frame__chart { min-width: 0 !important; }
+  .combo-frame__chart-wrap { overflow: visible; }
+  .zoom-shell__bar { display: none; }
+  .zoom-shell__viewport { overflow: visible; height: auto; }
+  .zoom-shell__inner { zoom: 1 !important; }
 }
 .print-body { margin-top: 18px; padding: 0 28px 8px; overflow-x: auto; }
 .print-empty { padding: 60px 0; text-align: center; font-size: 12px; color: #7a746a; }
@@ -60,36 +106,6 @@
 .print-sheet-foot {
   margin-top: 8px; padding-top: 6px; border-top: var(--euro-line-thin) solid #ded7c6;
   font-size: 9.5px; letter-spacing: .08em; color: #7a746a;
-}
-
-/* ── ③ component：档位工具栏与凡例 ─────────────────────────────────────── */
-.print-toolbar {
-  position: sticky; top: 0; z-index: 20;
-  background: #fbfaf7; border-bottom: var(--euro-line-thin) solid #ded7c6;
-}
-.print-toolbar-inner {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
-  max-width: 1280px; margin: 0 auto; padding: 10px 20px;
-}
-.print-tabs { display: flex; flex: 1 1 480px; gap: 4px; overflow-x: auto; }
-.print-tab {
-  flex: none; padding: 6px 10px; font-size: 11.5px; letter-spacing: .06em;
-  color: #4b5b61; background: transparent; border: var(--euro-line-thin) solid transparent; cursor: pointer;
-  border-radius: 8px;
-}
-.print-tab:hover { background: #ece7da; }
-.print-tab--active { background: #12303b; border-color: #12303b; color: #fbfaf7; }
-.print-toolbar-hint { font-size: 10px; letter-spacing: .08em; color: #8a8578; }
-.print-sizes { display: flex; gap: 4px; }
-.print-size {
-  flex: none; padding: 5px 9px; font-size: 11px; letter-spacing: .06em;
-  color: #4b5b61; background: transparent; border: var(--euro-line-thin) solid #cfd9cf; cursor: pointer;
-}
-.print-size:hover { background: #ece7da; }
-.print-size--active { background: #12303b; border-color: #12303b; color: #fbfaf7; }
-.print-legend {
-  max-width: 1280px; margin: 14px auto 0; padding: 0 20px;
-  font-size: 11px; line-height: 1.7; letter-spacing: .04em; color: #5b6a70;
 }
 
 /* ── ③ component：屏幕 5 档的画布容器 ──────────────────────────────────── */
@@ -146,28 +162,35 @@
   display: flex; align-items: stretch; margin-top: 10px;
   border: var(--euro-line-thin) solid var(--euro-ink);
 }
-/* 小传区宽度定死为分卷预算宽（MAX_BIO_WIDTH=820，两侧联动）：末卷列数少，
-   若让它按内容收窄，图区就被剩下的空间撑宽，同一份 viewBox 会被放得更大，
-   表现为末页字号明显大于首页。定宽后各卷图区等宽、缩放一致；
-   末卷内容靠右（.combo-cols 为 row-reverse），多出的留白落在左侧。
-   仍不用百分比封顶：百分比可能小于内容实宽，会把最左一栏挤出边界。 */
-.combo-frame__bio { flex: 0 0 auto; min-width: 820px; overflow: hidden; }
+/* 小传区宽度 = 分卷预算常量（MAX_BIO_WIDTH + 表头余量），由组件写入 --combo-bio-w。
+   它是「常量」而非「本卷实际内容宽」：无论左栏列数多少，图区宽度都恒定，
+   右图大小因此只取决于自身内容，不再被左栏内容多少左右。
+   列数少的卷由 .combo-cols 的 space-evenly 在小传区内摊开，不会整块堆在一侧。 */
+.combo-frame__bio {
+  flex: 0 0 var(--combo-bio-w, 660px);
+  max-width: var(--combo-bio-w, 660px);
+  overflow: hidden;
+}
 /* 屏显保底宽：一整框要 小传 + 书脊 + 吊线图 都放开才不被互相挤压。
    窗口不够宽时改为纸面横向滚动（.print-body 已是 overflow-x:auto），
    版式与 A3 打印一致；打印时下列 min-width 归零，按纸宽出页。 */
 .print-sheet--combo { min-width: 1420px; }
 .combo-frame__spine {
-  display: flex; flex: 0 0 46px; flex-direction: column; align-items: center; justify-content: center;
-  gap: 24px; writing-mode: vertical-rl; text-orientation: upright;
+  display: flex; flex: 0 0 34px; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; writing-mode: vertical-rl; text-orientation: upright;
   border-left: var(--euro-line-thin) solid var(--euro-ink);
   border-right: var(--euro-line-thin) solid var(--euro-ink);
   font-size: 12px; letter-spacing: .3em;
 }
 .combo-frame__spine b { font-size: 16px; font-weight: 600; letter-spacing: .44em; }
 .combo-frame__spine i { font-style: normal; font-size: 9.5px; letter-spacing: .2em; color: #4a4a4a; }
-/* 图区不吃高度：绝对定位铺满剩下的一格，框高由小传决定，
-   否则 SVG 会按 viewBox 比例把整框撑高，打印时被顶到下一页 */
-.combo-frame__chart-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
+/* 图区高度跟随整框（左右两栏等高），宽度由左侧小传区的固定比例决定：
+   小传区定宽后，图区宽度即恒定，不再随左栏列数多少伸缩，图的大小因此只取决于自身内容。 */
+/* 图区横向可滚动：外衍开启后单代人数多、图宽超出容器时，保持 1:1 字号而不是无限缩小 */
+.combo-frame__chart-wrap {
+  position: relative; flex: 1 1 auto; min-width: 0;
+  overflow-x: auto; overflow-y: hidden;
+}
 .combo-frame__chart {
   position: absolute; inset: 0; display: block; width: 100%; height: 100%;
 }
@@ -175,6 +198,7 @@
 /* 竖排小传：世代为组、组内一栏一人，右起；栏首朱点为名。
    组与栏都用 flex 排（不用百分比高度），打印时高度只由内容决定，
    否则 height:100% 会按纸高撑开，整框被顶到下一页 */
+/* 各世代组正常相邻排布、不摊开（多出的空间留在最左，属正常现象） */
 .combo-cols { display: flex; flex-direction: row-reverse; align-items: stretch; }
 .combo-col {
   display: flex; flex-direction: row-reverse; align-items: stretch;
@@ -252,8 +276,11 @@
 }
 .euro-band:last-child { border-bottom: 0; }
 .euro-cell { position: relative; min-width: 0; overflow: hidden; }
-/* 外衍：淡墨以示非本族血脉；本族血脉不带此类，故不展示外衍时完全无影响 */
-.euro-cell--extended { opacity: .6; }
+/* 外衍：虚线格 + 文字转灰（原为整格 opacity，打印发虚且无形状线索） */
+.euro-cell--extended { outline: 1px dashed #8f8a80; outline-offset: -3px; color: #6b6257; }
+.euro-cell--extended .euro-memo__item,
+.euro-cell--extended .euro-memo__child-name,
+.euro-cell--extended .euro-person__name { color: #6b6257; }
 .euro-person {
   display: flex; flex-direction: row-reverse; align-items: flex-start;
   gap: 3px; padding: 4px 3px; height: 100%;
@@ -262,6 +289,8 @@
   font-family: var(--euro-serif); font-size: var(--euro-font-name); font-weight: 600;
   letter-spacing: .1em; writing-mode: vertical-rl; text-orientation: upright;
 }
+/* 姓名与编号同竖列：编号横排于姓名正下方，与子嗣「姓名 + 横排编号」位置一致 */
+.euro-person__idcol { display: flex; flex-direction: column; align-items: center; gap: calc(2px * var(--pf-boost, 1)); }
 /* 行传格内 7–9px 小字落在定宽格里，浏览器最小字号会把它们撑出格子、被 overflow 裁掉。
    做法：{度量} 乘 --pf-boost 放大到下限之上，再由 zoom 把视觉尺寸收回原样。
    --pf-boost 由 .euro-scroll-wrap 按运行时探测结果写入（见 src/lib/minFontSize.ts）。 */
@@ -301,7 +330,7 @@
   writing-mode: horizontal-tb; font-size: calc(7px * var(--pf-boost, 1)); color: var(--euro-ink);
   zoom: var(--pf-zoom, 1);
 }
-.euro-person__no { font-size: calc(7px * var(--pf-boost, 1)); color: var(--euro-ink); zoom: var(--pf-zoom, 1); }
+.euro-person__no { writing-mode: horizontal-tb; font-size: calc(7px * var(--pf-boost, 1)); color: var(--euro-ink); zoom: var(--pf-zoom, 1); }
 /* 续页首列的承接标记 */
 .euro-carry {
   position: absolute;
@@ -320,6 +349,10 @@
 .euro-ruler__tag {
   padding: 8px 3px; border-radius: 9px; background: var(--euro-ink); color: #fff;
   font-size: 11px; letter-spacing: .16em; writing-mode: vertical-rl; text-orientation: upright;
+  /* 竖排文字放不下时会向左「续列」，表现为世次牌突然变宽、字序错乱（如「八世」显示成「世八」）。
+     苏式世次牌是绝对定位 + 内联 top，最靠下的一枚可用高度最紧，浏览器最小字号抬升字号后
+     极易触发；这里禁止折列，任何世次都恒为单列竖排。 */
+  white-space: nowrap;
 }
 .euro-branch {
   display: flex; flex: 0 0 var(--euro-branch-w); align-items: center; justify-content: center;
@@ -340,29 +373,7 @@
 }
 .euro-spine span { font-size: 9px; letter-spacing: .1em; }
 
-/* ── ③ component：手机流式预览 ─────────────────────────────────────────── */
-.print-mobile-wrap { display: none; }
-.print-mobile { max-width: 640px; margin: 0 auto; padding: 16px 18px 40px; }
-.print-mobile-tip {
-  margin-bottom: 18px; padding: 10px 12px;
-  background: #e8eee9; border: var(--euro-line-thin) solid #cfd9cf;
-  font-size: 11.5px; line-height: 1.8; letter-spacing: .04em; color: #3c5245;
-}
-.print-mobile h2 { margin-bottom: 14px; }
-.print-mobile-gen { margin-bottom: 18px; }
-.print-mobile-gen h3 {
-  margin-bottom: 8px; padding-bottom: 6px; border-bottom: var(--euro-line-thin) solid #ded7c6;
-  font-size: 12px; letter-spacing: .16em; color: #8f7134;
-}
-.print-mobile-gen ul { margin: 0; padding: 0; list-style: none; }
-.print-mobile-gen li { padding: 6px 0; border-bottom: var(--euro-line-thin) dashed #e2ddd2; }
-.print-mobile-gen li b { margin-right: 10px; font-family: var(--euro-serif); font-size: 14px; }
-.print-mobile-gen li span { font-size: 10.5px; line-height: 1.7; color: #5b6a70; }
-.print-mobile-legend { margin-top: 20px; font-size: 11px; line-height: 1.8; color: #5b6a70; }
-
 /* ── ④ state ───────────────────────────────────────────────────────────── */
-.u-no-print { /* 屏幕无效果，仅打印隐藏 */ }
-
 /* ── ⑤ media：屏幕断点 ─────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .euro-spread__pair { flex-direction: column; }
@@ -373,18 +384,13 @@
   .euro-page { margin: 0 0 14px; }
 }
 @media (max-width: 639px) {
-  .print-body, .print-legend { display: none; }
-  .print-mobile-wrap { display: block; }
-  .print-toolbar-inner { padding: 10px 14px; }
-  .print-toolbar-hint { display: none; }
+  .print-body { display: none; }
 }
 
 /* ── ⑤ media：打印 A4 竖排（默认） ─────────────────────────────────────── */
 @media print {
   body, html.dark body { background: #fff; }
-  .u-no-print, .print-toolbar, .print-mobile-wrap { display: none; }
   .print-page { min-height: 0; padding: 0; background: #fff; }
-  .print-legend { margin: 0 0 4mm; padding: 0; font-size: 9px; color: #333; }
   .print-body { margin: 0; padding: 0; overflow: visible; }
   .print-sheet:not(.euro-page) {
     width: 100%; max-width: none; margin: 0; padding: 0;

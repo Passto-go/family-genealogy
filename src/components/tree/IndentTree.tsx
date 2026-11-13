@@ -16,6 +16,10 @@ interface IndentTreeProps {
   forceExpand?: boolean
   selectedId?: number | null
   onSelect: (member: Member) => void
+  /** 谱页打印：隐藏「详细」入口（打印件无需点击查看详情） */
+  hideDetail?: boolean
+  /** 搜索命中的成员：姓名标橙 */
+  matchedIds?: Set<number>
 }
 
 interface RowInfo {
@@ -37,7 +41,7 @@ function PersonIcon({ className }: { className?: string }) {
   )
 }
 
-export function IndentTree({ members, visibleIds, bloodIds, compact = false, forceExpand = false, selectedId, onSelect }: IndentTreeProps) {
+export function IndentTree({ members, visibleIds, bloodIds, compact = false, forceExpand = false, selectedId, onSelect, hideDetail = false, matchedIds }: IndentTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
 
   // 实际渲染集合：房支筛选后的成员 ∩（血脉 + 外衍），滤掉外姓配偶
@@ -205,18 +209,26 @@ export function IndentTree({ members, visibleIds, bloodIds, compact = false, for
                         ? "border-dashed border-[#7c8a90] dark:border-[#527d8d]"
                         : "border-[#c9d6e2] dark:border-[#34535f]",
                       selected && "border-[#1a5fb4] dark:border-[#7fa8cc]",
+                      matchedIds?.has(member.id) && "print-hit",
                     )}
                     style={nodeTextStyle(compact ? "treeCompact" : "tree")}
                   >
                     {member.name}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onSelect(member)}
-                    className="text-[12px] text-[#1a5fb4] hover:underline dark:text-[#9ec8ec]"
-                  >
-                    详细
-                  </button>
+                  {extended ? (
+                    <span className="shrink-0 rounded-[3px] border border-dashed border-[#7c8a90] px-1 text-[10px] leading-[1.3] text-[#5f6b73] dark:border-[#527d8d] dark:text-[#93bccd]">
+                      外衍
+                    </span>
+                  ) : null}
+                  {hideDetail ? null : (
+                    <button
+                      type="button"
+                      onClick={() => onSelect(member)}
+                      className="text-[12px] text-[#1a5fb4] hover:underline dark:text-[#9ec8ec]"
+                    >
+                      详细
+                    </button>
+                  )}
                   <span className="text-[12px]" style={{ color: "var(--dot-blood)" }}>
                     {generationLabel(member.generation)}
                   </span>

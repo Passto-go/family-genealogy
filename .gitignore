@@ -30,3 +30,7 @@ server/data/.session-secret
 
 # 只读演示站构建产物
 dist-demo/
+
+# 微信小程序独立项目（位于 ../miniprogram-clantree），不进本仓
+/miniprogram/
+/docs/wechat-miniprogram-plan.md

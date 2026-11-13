@@ -163,6 +163,8 @@ export async function readSessionToken(
 
 // ── 租户（族谱）访问凭证：与管理员会话完全分离 ──
 export const TENANT_TTL_MS = 1000 * 60 * 60 * 24 // 1 天
+/** 小程序端凭证有效期：小程序无 Cookie 自动管理，令牌存本机，故放宽为 7 天 */
+export const TENANT_TTL_MP_MS = TENANT_TTL_MS * 7
 
 export interface TenantPayload {
   fid: number
@@ -181,17 +183,19 @@ export function tenantCookieName(slug: string): string {
 export async function createTenantToken(
   family: { id: number; slug: string; accessPasswordHash: string },
   secret: string,
-): Promise<{ token: string; maxAge: number }> {
+  ttlMs: number = TENANT_TTL_MS,
+): Promise<{ token: string; maxAge: number; expiresAt: number }> {
+  const expiresAt = Date.now() + ttlMs
   const payload: TenantPayload = {
     fid: family.id,
     slug: family.slug,
     typ: "tenant",
     pwd: await passwordFingerprint(family.accessPasswordHash),
-    exp: Date.now() + TENANT_TTL_MS,
+    exp: expiresAt,
   }
   const body = bytesToB64url(encoder.encode(JSON.stringify(payload)))
   const signature = await sign(body, secret, "tenant")
-  return { token: `${body}.${signature}`, maxAge: Math.floor(TENANT_TTL_MS / 1000) }
+  return { token: `${body}.${signature}`, maxAge: Math.floor(ttlMs / 1000), expiresAt }
 }
 
 export async function readTenantToken(

@@ -50,7 +50,6 @@ const FAMILY: FamilyInput = {
   policeNumber: "",
   showExtendedLineage: false,
   isPublished: true,
-  printIncludeExtended: false,
 }
 
 interface SeedNode {

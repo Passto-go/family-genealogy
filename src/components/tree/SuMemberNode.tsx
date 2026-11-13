@@ -21,7 +21,7 @@ function SuMemberNodeInner({ data, selected }: NodeProps<MemberFlowNode>) {
           <span className={NODE_TEXT_CLASS} style={nodeTextStyle("su")}>
             {collapsedLabel}房
           </span>
-          <span className="text-[calc(10px*var(--pf-boost,1))] tracking-[0.04em] text-[#9a948a] dark:text-[#9fb2ba]">
+          <span className="text-[calc(10px*var(--pf-boost,1))] tracking-[0.04em] text-[#9a948a]">
             {collapsedCount} 人 · 点击展开
           </span>
         </div>
@@ -39,7 +39,7 @@ function SuMemberNodeInner({ data, selected }: NodeProps<MemberFlowNode>) {
     >
       <Handle type="target" position={Position.Top} />
       {!compact && childCount ? (
-        <span className="shrink-0 text-[calc(9px*var(--pf-boost,1))] leading-none tracking-[0.04em] text-[#9a948a] dark:text-[#9fb2ba]">
+        <span className="shrink-0 text-[calc(9px*var(--pf-boost,1))] leading-none tracking-[0.04em] text-[#9a948a]">
           子{childCount}
         </span>
       ) : null}
@@ -48,7 +48,7 @@ function SuMemberNodeInner({ data, selected }: NodeProps<MemberFlowNode>) {
           className={cn(
             "shrink-0 rounded-full",
             extended
-              ? "size-[calc(6px*var(--pf-boost,1))] border border-[#7c8a90] bg-transparent dark:border-[#527d8d]"
+              ? "size-[calc(6px*var(--pf-boost,1))] border border-[#7c8a90] bg-transparent"
               : compact
                 ? "size-[calc(4px*var(--pf-boost,1))]"
                 : "size-[calc(6px*var(--pf-boost,1))]",

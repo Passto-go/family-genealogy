@@ -135,7 +135,7 @@ export function createLocalRepo(dbFile: string): Repo {
   if (hasTable("family") && !tableColumns("family").includes("is_published")) {
     run("ALTER TABLE family ADD COLUMN is_published INTEGER NOT NULL DEFAULT 1")
   }
-  // 旧库迁移：family 增加「谱页是否含外衍（两层，至孙辈）」（默认不含）
+  // 旧库迁移：family 增加「谱页是否排入外衍」开关（默认关）
   if (hasTable("family") && !tableColumns("family").includes("print_include_extended")) {
     run("ALTER TABLE family ADD COLUMN print_include_extended INTEGER NOT NULL DEFAULT 0")
   }
@@ -631,6 +631,14 @@ export function createLocalRepo(dbFile: string): Repo {
         return Number(row?.n ?? 0)
       }
       const row = one("SELECT COUNT(*) AS n FROM member WHERE family_id = ?", familyId)
+      return Number(row?.n ?? 0)
+    },
+
+    async countGenerations(familyId): Promise<number> {
+      const row = one(
+        "SELECT COUNT(DISTINCT generation) AS n FROM member WHERE family_id = ?",
+        familyId,
+      )
       return Number(row?.n ?? 0)
     },
 

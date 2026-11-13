@@ -30,10 +30,10 @@ CREATE TABLE IF NOT EXISTS family (
   icp_number            TEXT NOT NULL DEFAULT '',
   police_number         TEXT NOT NULL DEFAULT '',
   show_extended_lineage INTEGER NOT NULL DEFAULT 0,
+  -- 已停用：谱面外衍改由访客侧开关控制；保留该列仅为不丢历史数据
+  print_include_extended INTEGER NOT NULL DEFAULT 0,
   -- 是否在前台公开展示：关闭后门户不列出、直接访问按不存在处理（仅超级管理员可改）
   is_published          INTEGER NOT NULL DEFAULT 1,
-  -- 谱页是否排入出嫁女子后裔（两层，至孙辈，与世系图口径一致）：默认不含，仅超级管理员可改
-  print_include_extended INTEGER NOT NULL DEFAULT 0,
   created_by            INTEGER REFERENCES admin_user(id) ON DELETE SET NULL,
   updated_by            INTEGER REFERENCES admin_user(id) ON DELETE SET NULL,
   created_at            TEXT NOT NULL DEFAULT '',

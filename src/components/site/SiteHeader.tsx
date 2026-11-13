@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react"
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom"
-import { BookOpen, Home, Info, Lock, LogIn, Moon, Printer, Sun, type LucideIcon } from "lucide-react"
+import { BookOpen, Home, Info, Lock, LogIn, Moon, Sun, type LucideIcon } from "lucide-react"
 import { useTenantOptional } from "@/lib/tenant-context"
 import { useThemeMode } from "../ThemeModeProvider"
 import { cn } from "@/lib/utils"
@@ -144,8 +144,6 @@ export function SiteHeader({ variant = "portal" }: { variant?: SiteHeaderVariant
   const goDirectory = useDirectoryNav()
   const { mode, toggle } = useThemeMode()
   const isFamily = variant === "family"
-  // 谱页入口只在族谱上下文出现；手机导航整条隐藏，故手机端改用右侧图标区入口
-  const printPath = isFamily ? (tenant?.path("print") ?? null) : null
   // 世系图：族内直达当前族，门户/无族上下文则下拉选族（列表懒加载）
   const lineagePath = isFamily ? (tenant?.path("genealogy") ?? null) : null
   // 图标表示「点击后切换到的模式」：日间显示月亮（可切夜间），夜间显示太阳（可切日间）
@@ -212,33 +210,9 @@ export function SiteHeader({ variant = "portal" }: { variant?: SiteHeaderVariant
                 ) : null}
               </Fragment>
             ))}
-            {printPath ? (
-              // 用 Link 而不是裸 <a>：换部署前缀时裸 href 会丢掉 base
-              <Link
-                to={printPath}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="谱页（新标签打开，可另存为 PDF）"
-                className={cn(itemClass, "text-paper-50/85 hover:text-paper-50")}
-              >
-                谱页
-              </Link>
-            ) : null}
           </nav>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {printPath ? (
-              <Link
-                to={printPath}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="谱页（另存为 PDF）"
-                aria-label="谱页"
-                className={cn(iconBtnClass, "md:hidden")}
-              >
-                <Printer className="size-4" strokeWidth={1.6} />
-              </Link>
-            ) : null}
             <button
               type="button"
               onClick={toggle}

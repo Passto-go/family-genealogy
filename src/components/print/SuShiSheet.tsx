@@ -114,6 +114,7 @@ function SuShiCell({
   slotLeft,
   slotW,
   extended,
+  matched,
   m,
 }: {
   member: Member
@@ -124,6 +125,8 @@ function SuShiCell({
   slotLeft: Record<string, number>
   slotW: Record<string, number>
   extended: boolean
+  /** 搜索命中：姓名标橙 */
+  matched?: boolean
   m: Metrics
 }) {
   const colBase = {
@@ -134,9 +137,16 @@ function SuShiCell({
     overflow: "hidden" as const,
   }
   return (
-    <div style={{ position: "relative", width: cellW, height: info.h }}>
+    <div
+      className={cn(extended && "sushi-cell--extended")}
+      style={{ position: "relative", width: cellW, height: info.h }}
+    >
       <div
-        className={cn("font-song font-semibold", extended ? "text-[#7a7066]" : "text-[#1c1c1c]")}
+        className={cn(
+          "font-song font-semibold",
+          extended ? "text-[#7a7066]" : "text-[#1c1c1c]",
+          matched && "print-hit",
+        )}
         style={{
           ...colBase,
           left: nameLeft,
@@ -189,6 +199,7 @@ export function SuShiSheet({
   family,
   allMembers,
   bloodIds,
+  matchedIds,
 }: {
   people: Member[]
   family: Family
@@ -196,6 +207,8 @@ export function SuShiSheet({
   allMembers?: Member[]
   /** 本族父系血脉集合；不在其中的即为外衍（展示外衍与不展示外衍两种范围都适用） */
   bloodIds?: Set<number>
+  /** 搜索命中成员集合 */
+  matchedIds?: Set<number>
 }) {
   // 字号放大倍数：随浏览器最小字号走；没设下限时为 1，按设计基准排
   const [boost] = useState(() => detectFontBoost(DESIGN.memoFs))
@@ -322,11 +335,16 @@ export function SuShiSheet({
     }
 
     const genOf = (person: Member) => Math.max(1, person.generation)
-    const rowH = new Map<number, number>()
+    const perGenH = new Map<number, number>()
     for (const person of people) {
       const g = genOf(person)
-      rowH.set(g, Math.max(rowH.get(g) ?? 0, info.get(person.id)?.h ?? 0))
+      perGenH.set(g, Math.max(perGenH.get(g) ?? 0, info.get(person.id)?.h ?? 0))
     }
+    // 各世次行高统一：取全谱最高一格为唯一行高，所有世代共用，
+    // 保证四世至八世格式一致、不会因末世（叶节点）内容短而整行压扁。
+    const uniformH = Math.max(0, ...perGenH.values())
+    const rowH = new Map<number, number>()
+    for (const g of perGenH.keys()) rowH.set(g, uniformH)
     const rows = [...rowH.keys()].sort((a, b) => a - b)
     const rowTop = new Map<number, number>()
     let acc = 0
@@ -494,6 +512,7 @@ export function SuShiSheet({
                   slotLeft={laid.slotLeft}
                   slotW={laid.slotW}
                   extended={n.extended}
+                  matched={matchedIds?.has(n.member.id)}
                   m={m}
                 />
               </div>
@@ -519,7 +538,7 @@ export function SuShiSheet({
       <footer className="sushi-foot">
         <span>
           同一房支连续成列，长幼自右向左；竖线为父子相承；缺项留空栏。
-          {laid.hasExtended ? "浅色者为外衍。" : ""}
+          {laid.hasExtended ? "虚线框或浅色者为外衍。" : ""}
         </span>
         <span>世系图 · 第 1 / 1 页</span>
       </footer>

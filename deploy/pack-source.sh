@@ -10,6 +10,7 @@
 #   - 本地工具与编辑器残留：.codebuddy、.workbench-bin、._*、.DS_Store
 #     （2026-11-09 首次部署时曾把这些打进包，迁移后需额外清理）
 #   - 公开仓导出目录：.publish（脱敏副本，与线上部署无关）
+#   - 微信小程序：miniprogram（独立项目，源码不随网页部署上传 ECS）
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,6 +28,7 @@ tar czf "$OUT" \
   --exclude='./.codebuddy' \
   --exclude='./.workbench-bin' \
   --exclude='./.publish' \
+  --exclude='./miniprogram' \
   --exclude='._*' \
   --exclude='.DS_Store' \
   -C . .
