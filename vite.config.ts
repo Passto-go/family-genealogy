@@ -2,6 +2,13 @@ import path from "path"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
 
+/** 构建时注入的「最后更新」标签（北京时间，固定 UTC+8、无夏令时）。 */
+function buildDateLabelForDefine(): string {
+  const bj = new Date(Date.now() + 8 * 3600 * 1000)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${bj.getUTCFullYear()} 年 ${pad(bj.getUTCMonth() + 1)} 月 ${pad(bj.getUTCDate())} 日`
+}
+
 export default defineConfig({
   /** 主应用构建恒为 false，只读演示站（vite.demo.config.ts）才置 true */
   define: { __DEMO__: "false" },
@@ -10,6 +17,9 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  define: {
+    __APP_BUILD_TIME__: JSON.stringify(buildDateLabelForDefine()),
   },
   server: {
     port: 5174,

@@ -29,12 +29,12 @@ import { cn } from "@/lib/utils"
 /**
  * 谱页（/t/:slug/print）：只读纸面视图，独立于 SiteLayout，不带站点导航与水印。
  *
- * 六档按产出方式分三类；key 与 URL（?v=）自 2026-11-08 起未动，旧书签照常可用：
+ * 六档按产出方式分三类；key 与 URL（?v=）已重定：欧式 oushi→euro、垂丝 chuisi→vertical（key 同步），旧 slug 经兼容映射仍可用：
  * - 纸面分卷：欧式谱 euro / 欧苏谱 combo / 苏式谱 su-shi（SuShiSheet，五世一图垂珠体）
  * - 树形分页：树形谱 tree（IndentTree 全展开，按块分页）
- * - 屏幕画布：卡片谱 card / 垂丝谱 su（整族缩进一张纸，人多时只宜屏幕预览）
+ * - 屏幕画布：卡片谱 card / 垂丝谱 vertical（整族缩进一张纸，人多时只宜屏幕预览）
  *
- * su 是「垂丝谱」（SuMemberNode），su-shi 是「苏式谱」（SuShiNode + SuShiSheet），
+ * vertical 是「垂丝谱」（SuMemberNode），su-shi 是「苏式谱」（SuShiNode + SuShiSheet），
  * 只差后缀但实现完全不同。新增档位一律用下面的显式类型守卫收窄，
  * 不要用 includes 之后仍沿用未收窄的 PrintLayout，否则会静默走错渲染器。
  *
@@ -42,31 +42,33 @@ import { cn } from "@/lib/utils"
  */
 
 const LAYOUTS = [
-  { key: "euro", label: "欧式谱", slug: "oushi" },
+  { key: "euro", label: "欧式谱", slug: "euro" },
   { key: "su-shi", label: "苏式谱", slug: "su-shi" },
   { key: "combo", label: "欧苏谱", slug: "combo" },
   { key: "tree", label: "树形谱", slug: "tree" },
   { key: "card", label: "卡片谱", slug: "card" },
-  { key: "su", label: "垂丝谱", slug: "chuisi" },
+  { key: "vertical", label: "垂丝谱", slug: "vertical" },
 ] as const
 
 type PrintLayout = (typeof LAYOUTS)[number]["key"]
 
 /**
  * 地址栏档位别名：只影响链接写法，组件与样式仍按内部 key 走。
- * 旧书签里的 ?v=su 等写法照旧能打开，不做重定向，避免打断阅读历史。
+ * 旧书签里的 ?v=su / ?v=oushi / ?v=chuisi 写法照旧能打开（经兼容映射），不做重定向。
  */
 const LAYOUT_SLUGS: Record<string, PrintLayout> = {
   ...Object.fromEntries(LAYOUTS.map((item) => [item.slug, item.key])),
-  /* 兼容旧链接 */
+  /* 兼容旧链接（历史 slug 仍可用，避免旧书签失效） */
   euro: "euro",
-  su: "su",
+  oushi: "euro", // 旧欧式谱
+  su: "vertical", // 历史垂丝谱 ?v=su → 现 vertical
+  chuisi: "vertical", // 旧垂丝谱
 }
 
 const slugOf = (key: PrintLayout) => LAYOUTS.find((item) => item.key === key)?.slug ?? key
 
 /** 屏幕画布档：整族缩放一页，不参与纸面分卷 */
-const FLOW_LAYOUTS = ["card", "su"] as const
+const FLOW_LAYOUTS = ["card", "vertical"] as const
 type FlowLayout = (typeof FLOW_LAYOUTS)[number]
 const isFlowLayout = (value: PrintLayout): value is FlowLayout =>
   (FLOW_LAYOUTS as readonly string[]).includes(value)
@@ -77,8 +79,8 @@ type TreeLayout = (typeof TREE_LAYOUTS)[number]
 const isTreeLayout = (value: PrintLayout): value is TreeLayout =>
   (TREE_LAYOUTS as readonly string[]).includes(value)
 
-/** 画布档的节点渲染器：卡片谱走 member、垂丝谱走 su，苏式谱已由 SuShiSheet 独立出页 */
-const NODE_TYPES = { member: MemberNode, su: SuMemberNode }
+/** 画布档的节点渲染器：卡片谱走 member、垂丝谱走 vertical，苏式谱已由 SuShiSheet 独立出页 */
+const NODE_TYPES = { member: MemberNode, vertical: SuMemberNode }
 
 const CHINESE_DIGITS = "〇一二三四五六七八九"
 const HEAVENLY_STEMS = "甲乙丙丁戊己庚辛壬癸"
@@ -114,7 +116,7 @@ function PrintFlow({
   family: Family
 }) {
   /* 垂丝谱另走纸面装帧：左竖排谱名、世次标尺、右纪年落款 */
-  const isChuisi = layout === "su"
+  const isChuisi = layout === "vertical"
   /* 浏览器最小字号把 7–9px 小字强行放大，节点内文字会被卡片框裁掉。
      整张画布的度量（节点、间距、字号）同比放大到下限之上，再由 --flow-scale 收回。 */
   const [boost] = useState(() => detectFontBoost())
@@ -130,7 +132,7 @@ function PrintFlow({
         }
     return buildLayout(people, options)
   }, [people, isChuisi, boost])
-  const nodeType = isChuisi ? "su" : "member"
+  const nodeType = isChuisi ? "vertical" : "member"
 
   const nodes = useMemo<Node[]>(
     () => built.nodes.map((node) => ({ ...node, type: nodeType })),

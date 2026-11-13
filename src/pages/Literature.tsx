@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useLayoutEffect, useMemo } from "react"
 import { useTenant } from "@/lib/tenant-context"
 
 interface ChapterProps {
@@ -35,6 +35,11 @@ const CHAPTERS = [
 ]
 
 export default function Literature() {
+  // 进入页面复位到顶部，避免从底部页脚点入时保留上一页滚动位置（法律/关于页同此处理）
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" })
+  }, [])
+
   const { family, stats } = useTenant()
 
   const prefaceParagraphs = useMemo(

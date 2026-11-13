@@ -231,7 +231,7 @@ export function GenealogyToolbar({
           图例 + 外衍开关：桌面端左右两列，右侧控件组相对整个方框垂直居中；
           移动端沿用原来的弹性排列（图例与开关同排两端对齐、说明整行在下），不做调整。
         */}
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-t border-paper-200 pt-1.5 sm:gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1.5 border-t border-paper-200 pt-1.5 sm:gap-4">
           <div className="min-w-0 sm:flex-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] tracking-[0.06em] text-muted-foreground/80">
               <span className="flex items-center gap-1.5">
@@ -243,48 +243,45 @@ export function GenealogyToolbar({
                 外衍
               </span>
             </div>
-            <p className="mt-1 hidden text-[10px] leading-[1.55] tracking-[0.03em] text-muted-foreground/80 sm:block">
+          </div>
+
+          <div className="flex flex-col gap-1 sm:shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[10.5px] tracking-[0.06em] text-ink-700">出嫁女子后裔</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showExtended}
+                aria-label="出嫁女子后裔（外衍）是否随谱展示"
+                onClick={() => onShowExtendedChange(!showExtended)}
+                className={cn(
+                  // after 伪元素把可点区域扩到约 44×32，视觉尺寸缩小后触控仍好按
+                  "relative h-[16px] w-[28px] shrink-0 rounded-full border transition-colors duration-200 after:absolute after:-inset-2 after:content-['']",
+                  showExtended
+                    ? "border-ink-700 bg-ink-800"
+                    : "border-paper-400 bg-paper-200 hover:border-ink-400",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-1/2 size-[10px] -translate-y-1/2 rounded-full bg-paper-50 shadow-sm transition-all duration-200",
+                    showExtended ? "left-[14px]" : "left-[2px]",
+                  )}
+                />
+              </button>
+              <span
+                className={cn(
+                  "text-[10px] tracking-[0.1em]",
+                  showExtended ? "text-gold-700" : "text-muted-foreground",
+                )}
+              >
+                {showExtended ? "随谱展示" : "未随谱"}
+              </span>
+            </div>
+            <p className="text-[10px] leading-[1.55] tracking-[0.03em] text-muted-foreground/80 sm:max-w-[300px]">
               {extendedHint}
             </p>
           </div>
-
-          <div className="flex items-center gap-2 sm:shrink-0">
-            <span className="text-[10.5px] tracking-[0.06em] text-ink-700">出嫁女子后裔</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showExtended}
-              aria-label="出嫁女子后裔（外衍）是否随谱展示"
-              onClick={() => onShowExtendedChange(!showExtended)}
-              className={cn(
-                // after 伪元素把可点区域扩到约 44×32，视觉尺寸缩小后触控仍好按
-                "relative h-[16px] w-[28px] shrink-0 rounded-full border transition-colors duration-200 after:absolute after:-inset-2 after:content-['']",
-                showExtended
-                  ? "border-ink-700 bg-ink-800"
-                  : "border-paper-400 bg-paper-200 hover:border-ink-400",
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-1/2 size-[10px] -translate-y-1/2 rounded-full bg-paper-50 shadow-sm transition-all duration-200",
-                  showExtended ? "left-[14px]" : "left-[2px]",
-                )}
-              />
-            </button>
-            <span
-              className={cn(
-                "text-[10px] tracking-[0.1em]",
-                showExtended ? "text-gold-700" : "text-muted-foreground",
-              )}
-            >
-              {showExtended ? "随谱展示" : "暂不展示"}
-            </span>
-          </div>
-
-          {/* 移动端说明：整行独占，位置与调整前一致（开关之后），桌面端说明在左列 */}
-          <p className="w-full text-[10px] leading-[1.55] tracking-[0.03em] text-muted-foreground/80 sm:hidden">
-            {extendedHint}
-          </p>
         </div>
       </div>
     </div>

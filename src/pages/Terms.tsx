@@ -3,22 +3,22 @@ import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { useAnalytics } from "@/lib/site-config"
 import { PROVIDER_META } from "@/lib/analytics"
+import { buildDateLabel } from "@/lib/time"
 
 const TOC: TocItem[] = [
   { id: "terms-1", label: "一、条款的接受" },
   { id: "terms-2", label: "二、服务说明" },
   { id: "terms-3", label: "三、账户与密码（管理员）" },
   { id: "terms-4", label: "四、访问行为规范" },
-  { id: "terms-5", label: "五、内容的所有权与授权" },
+  { id: "terms-5", label: "五、知识产权与内容授权" },
   { id: "terms-6", label: "六、内容的使用与授权" },
   { id: "terms-7", label: "七、AI 训练与自动化抓取限制" },
-  { id: "terms-8", label: "八、知识产权" },
-  { id: "terms-9", label: "九、免责声明" },
-  { id: "terms-10", label: "十、服务变更与终止" },
-  { id: "terms-11", label: "十一、责任限制" },
-  { id: "terms-12", label: "十二、适用法律与争议解决" },
-  { id: "terms-13", label: "十三、条款的更新与可分性" },
-  { id: "terms-14", label: "十四、联系方式" },
+  { id: "terms-8", label: "八、免责声明" },
+  { id: "terms-9", label: "九、服务变更与终止" },
+  { id: "terms-10", label: "十、责任限制" },
+  { id: "terms-11", label: "十一、适用法律与争议解决" },
+  { id: "terms-12", label: "十二、条款的更新" },
+  { id: "terms-13", label: "十三、联系方式" },
 ]
 
 /** 条目首词的轻量强调（仅用于列表项引导词，不在句中加粗） */
@@ -32,7 +32,7 @@ export default function Terms() {
   const analytics = useAnalytics()
   const enabledAnalytics = analytics.filter((a) => a.enabled)
   return (
-    <LegalDoc eyebrow="条款" title="许可声明" updatedAt="2026 年 11 月 10 日" toc={TOC}>
+    <LegalDoc eyebrow="条款" title="许可声明" updatedAt={buildDateLabel()} toc={TOC}>
       <div className="mb-6 border border-dashed px-4 py-3 text-[13px] leading-relaxed">
         示例文本：本页为开源模板，部署前请自行修改运营方、联系方式与管辖地，并据实调整内容。
       </div>
@@ -56,9 +56,7 @@ export default function Terms() {
         <p>
           本服务以内容展示为主，不开放面向访客的注册与登录；后台登录入口仅对授权管理员开放。信息反馈通道是否开放，以页面实际显示为准。站内全部内容由运营方整理、维护与更新。
         </p>
-        <p>
-          本服务按"现状"提供。运营方保留根据运营需要调整、中断或终止部分或全部展示内容的权利，并将在合理范围内提前告知。
-        </p>
+        <p>本服务按"现状"提供。</p>
         {enabledAnalytics.length > 0 ? (
           <Note label="第三方分析服务">
             本服务接入的第三方分析/广告服务（依后台启用状态）：
@@ -92,13 +90,14 @@ export default function Terms() {
         <p>违反上述规范的，运营方有权限制或终止您的访问权限，并保留依法追究法律责任的权利。</p>
       </Chapter>
 
-      <Chapter id="terms-5" title="五、内容的所有权与授权">
+      <Chapter id="terms-5" title="五、知识产权与内容授权">
         <p>
-          本站所载族谱内容（包括家族文献、成员档案、谱序、家训、字辈派语及其编排成果）的著作权及相关权利，归运营方 Panda_Q 或相关权利人所有，自内容发布之日起受法律保护。
+          本站所载族谱内容（包括家族文献、成员档案、谱序、家训、字辈派语及其编排成果）的著作权及相关权利，归运营方 Panda_Q 或相关权利人所有，自内容发布之日起受法律保护；为展示与存储之目的，运营方对上述内容进行使用、存储与展示。本网站的程序、设计、界面及既有文献的编排成果（不含族谱内容本身）的知识产权，亦归运营方或相关权利人所有，其所使用的第三方开源组件依各自许可协议使用，相关权利归各组件作者所有。
         </p>
         <p>
-          为展示与存储之目的，运营方对上述内容进行使用、存储与展示。您保证在访问、传播本站内容时不侵犯任何第三方的合法权益。
+          本站自有程序代码以 GNU Affero 通用公共许可证第三版（AGPL-3.0）开源：您可按该许可的条款使用、修改与再发布；依据该许可，若将修改后的程序以网络服务方式向公众提供，应同样以 AGPL-3.0 公开相应源代码。该开源许可仅适用于程序代码本身，不适用于本站所载的族谱内容——内容的使用与授权仍按本节及第六条处理。
         </p>
+        <p>您保证在访问、传播本站内容时不侵犯任何第三方的合法权益。</p>
       </Chapter>
 
       <Chapter id="terms-6" title="六、内容的使用与授权">
@@ -122,7 +121,7 @@ export default function Terms() {
           <li>全文或实质性部分的转载，包括镜像站、内容聚合，以及转为音频、视频后重新发布；</li>
           <li>任何形式的商业利用，包括付费墙、广告分成、打包出售、收费培训；</li>
           <li>去除署名，或改动标题、正文后重新发布；</li>
-          <li>用于训练、微调、评估机器学习模型或构建数据集，以及大规模自动化抓取（另见第七条）。</li>
+          <li>用于 AI 训练、模型构建或大规模自动化抓取的，须事先取得授权（详见第七条）。</li>
         </ol>
 
         <H3>6.3 授权申请与侵权处理</H3>
@@ -148,19 +147,7 @@ export default function Terms() {
         </p>
       </Chapter>
 
-      <Chapter id="terms-8" title="八、知识产权">
-        <p>
-          本网站的程序、设计、界面及既有文献的编排成果（不含本站所载族谱内容本身），其知识产权归运营方或相关权利人所有。未经许可，不得复制、改编或用于商业目的。
-        </p>
-        <p>本网站所使用的第三方开源组件，依其各自许可协议使用，相关权利归各组件作者所有。</p>
-        <p>
-          本站自有程序代码以 GNU Affero 通用公共许可证第三版（AGPL-3.0）开源：您可按该许可的条款使用、修改与再发布；
-          依据该许可，若将修改后的程序以网络服务方式向公众提供，应同样以 AGPL-3.0 公开相应源代码。该开源许可仅适用于程序代码本身，
-          不适用于本站所载的族谱内容——内容的使用与授权仍按第五条、第六条处理。
-        </p>
-      </Chapter>
-
-      <Chapter id="terms-9" title="九、免责声明">
+      <Chapter id="terms-8" title="八、免责声明">
         <UL>
           <li>
             族谱内容由运营方整理与维护，相关史料的真实性与准确性以资料来源为准。运营方已尽合理审核义务，但不对内容的完整性与准确性作绝对保证；
@@ -172,7 +159,7 @@ export default function Terms() {
             因网络、设备、第三方服务或不可抗力导致的服务中断或数据损失，运营方在合理范围内免除责任；
           </li>
           <li>
-            本站运行于第三方云服务商（阿里云）提供的云服务器，机房、网络、供电与存储硬件等基础设施由该服务商按其服务条款负责；
+            本站运行于第三方云服务商阿里云（阿里云计算有限公司）提供的云服务器，机房、网络、供电与存储硬件等基础设施由该服务商按其服务条款负责；
             因云服务不可用导致的中断，运营方将在自身可控范围内配合恢复，并在法律规定的范围内承担责任；
           </li>
           <li>本服务仅供家族文化传承与信息查询之用，不构成法律、医疗或其他专业意见；</li>
@@ -182,27 +169,27 @@ export default function Terms() {
         </UL>
       </Chapter>
 
-      <Chapter id="terms-10" title="十、服务变更与终止">
+      <Chapter id="terms-9" title="九、服务变更与终止">
         <p>
           运营方可能因维护、升级、合规或运营策略调整，对服务内容进行变更或暂停。在符合法律规定的前提下，运营方有权在提前通知，或因紧急情况难以事先通知时，终止服务，且不因此向用户承担额外责任。
         </p>
       </Chapter>
 
-      <Chapter id="terms-11" title="十一、责任限制">
+      <Chapter id="terms-10" title="十、责任限制">
         <p>
           在适用法律允许的最大范围内，对于因使用或无法使用本服务所导致的间接、附带、特殊或后果性损失，运营方不承担责任。本条中的免责与限制条款具有独立效力，即使主要救济未能达到其基本目的，仍应适用。
         </p>
       </Chapter>
 
-      <Chapter id="terms-12" title="十二、适用法律与争议解决">
+      <Chapter id="terms-11" title="十一、适用法律与争议解决">
         <p>
           本声明的解释与适用受中华人民共和国法律管辖。因本声明或本服务产生的争议，双方应首先友好协商；协商不成的，提交运营方所在地有管辖权的人民法院诉讼解决。
         </p>
       </Chapter>
 
-      <Chapter id="terms-13" title="十三、条款的更新与可分性">
+      <Chapter id="terms-12" title="十二、条款的更新">
         <ol className={orderedListClass}>
-          <li>运营方保留修订本条款的权利，修订后以本页面"最后更新"日期标示；</li>
+          <li>运营方保留修订本条款的权利，修订后以本页面"最后更新"日期标示，并自该日期起生效；</li>
           <li>本条款中任何条款被认定为无效或不可执行的，不影响其余条款的效力；</li>
           <li>
             涉及服务功能、收费模式或数据处理方式的重大调整，将以显著方式提示，必要时重新取得您的同意。
@@ -210,7 +197,7 @@ export default function Terms() {
         </ol>
       </Chapter>
 
-      <Chapter id="terms-14" title="十四、联系方式">
+      <Chapter id="terms-13" title="十三、联系方式">
         <p>如对本声明有任何疑问、意见或建议，请发送邮件联系网站管理员。</p>
         <p>
           联系邮箱：{" "}

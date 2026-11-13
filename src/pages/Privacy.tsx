@@ -14,6 +14,7 @@ import { useAnalytics, useFeedbackEnabled } from "@/lib/site-config"
 import { PROVIDER_META, type AnalyticsProviderKey } from "@/lib/analytics"
 import { DEFAULT_ANALYTICS_NOTICES } from "@/lib/analytics-notices"
 import { resetAnalyticsConsent } from "@/lib/analytics-consent"
+import { buildDateLabel } from "@/lib/time"
 import type { ReactNode } from "react"
 
 const TOC: TocItem[] = [
@@ -108,16 +109,16 @@ export default function Privacy() {
   let crossBorderText: string
   if (!hasAnalytics) {
     crossBorderText =
-      "本站服务器（阿里云）位于中国境内；本站当前未启用任何第三方访问统计服务，不涉及向境外提供您的个人信息。"
+      "本站服务器（阿里云，阿里云计算有限公司）位于中国境内；本站当前未启用任何第三方访问统计服务，不涉及向境外提供您的个人信息。"
   } else if (overseasAnalytics.length === 0) {
-    crossBorderText = `本站服务器（阿里云）位于中国境内；接入的分析服务（${domesticLabels.join("、")}）也位于中国境内，不涉及向境外提供您的个人信息。`
+    crossBorderText = `本站服务器（阿里云，阿里云计算有限公司）位于中国境内；接入的分析服务（${domesticLabels.join("、")}）也位于中国境内，不涉及向境外提供您的个人信息。`
   } else {
     const domesticPart =
       domesticAnalytics.length > 0 ? `${domesticLabels.join("、")}位于中国境内，` : ""
-    crossBorderText = `本站服务器（阿里云）位于中国境内；接入的分析服务中，${domesticPart}${overseasLabels.join("、")}由位于美国的提供方（${overseasCompanies.join(" / ")}）运营，相关数据处理涉及传输至美国。各服务的具体跨境情况见第七节对应条款。涉及向境外提供个人信息的，我们依法履行告知义务；您于页面底部选择「接受」统计服务，即视为对包含前述跨境传输（Google Analytics 与 Microsoft Clarity 数据出境至美国）在内的统计处理给予同意。`
+    crossBorderText = `本站服务器（阿里云，阿里云计算有限公司）位于中国境内；接入的分析服务中，${domesticPart}${overseasLabels.join("、")}由位于美国的提供方（${overseasCompanies.join(" / ")}）运营，相关数据处理涉及传输至美国。各服务的具体跨境情况见第七节对应条款。涉及向境外提供个人信息的，我们依法履行告知义务；您于页面底部选择「接受」统计服务，即视为对包含前述跨境传输（Google Analytics 与 Microsoft Clarity 数据出境至美国）在内的统计处理给予同意。`
   }
   return (
-    <LegalDoc eyebrow="隐私" title="隐私说明" updatedAt="2026 年 11 月 10 日" toc={TOC}>
+    <LegalDoc eyebrow="隐私" title="隐私说明" updatedAt={buildDateLabel()} toc={TOC}>
       <div className="mb-6 border border-dashed px-4 py-3 text-[13px] leading-relaxed">
         示例文本：本页为开源模板，部署前请自行修改运营方、联系方式与管辖地，并据实调整内容。
       </div>
@@ -448,7 +449,7 @@ export default function Privacy() {
         <p>本服务的运营方及个人信息处理者为 Panda_Q，联系方式见文末。</p>
         <p>
           <B>存储位置与安全措施</B>
-          ：本站部署于第三方云服务商阿里云提供的云服务器（位于中国境内，基础设施详见第六节）。机房、网络、供电与存储硬件等基础设施由阿里云按其服务条款负责；
+          ：本站部署于第三方云服务商阿里云（阿里云计算有限公司）提供的云服务器（位于中国境内，基础设施详见第六节）。机房、网络、供电与存储硬件等基础设施由阿里云（阿里云计算有限公司）按其服务条款负责；
           谱牒与账户数据以数据库文件形式存放于该云服务器上，由运营方自行管理与备份，不另行复制到其他第三方系统。密码采用{" "}
           <C>PBKDF2</C> 加盐哈希存储，服务端不持有明文。我们采取访问控制、传输加密与定期备份等合理措施保护数据安全。互联网环境不存在绝对安全，管理员亦应妥善保管账户与密码。
         </p>
@@ -542,7 +543,7 @@ export default function Privacy() {
 
       <Chapter id="sec-11" title="十一、本说明的更新">
         <p>
-          我们可能不时更新本隐私说明。除法定要求外，重大变更将通过本页面「最后更新」日期及页脚入口予以提示。您继续使用本服务，即视为接受更新后的说明。
+          我们可能不时更新本隐私说明。除法定要求外，重大变更将通过本页面「最后更新」日期标示，并可在页脚入口查阅最新版本；本说明自其「最后更新」日期起生效。您继续使用本服务，即视为接受更新后的说明。
         </p>
       </Chapter>
 
