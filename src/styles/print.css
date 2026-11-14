@@ -383,9 +383,6 @@
   .su-frame__title, .su-frame__imprint { display: none; }
   .euro-page { margin: 0 0 14px; }
 }
-@media (max-width: 639px) {
-  .print-body { display: none; }
-}
 
 /* ── ⑤ media：打印 A4 竖排（默认） ─────────────────────────────────────── */
 @media print {
