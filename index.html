@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#12303B" />
-    <meta name="description" content="家族族谱只读演示：示例数据，无法编辑。" />
-    <title>时光家谱 · 只读演示</title>
+    <meta
+      name="description"
+      content="家族族谱 — 世系昭穆，一脉相承。查阅家族源流、世系图谱与家风家训。"
+    />
+    <title>时光家谱</title>
     <script>
-      // 与主站一致：首屏同步应用主题，避免挂载前后的明暗闪烁
+      // 首屏同步应用主题，消除 React 挂载前后的浅/深闪烁。
+      // 昼夜判定与 ThemeModeProvider 保持一致：本地时间 06:00–18:59 为日间（浅色），其余为夜间。
       (function () {
         try {
           var hour = new Date().getHours();
@@ -18,8 +22,9 @@
         } catch (e) {}
       })();
     </script>
-    <script type="module" crossorigin src="/family-genealogy/assets/demo-rCxrOey_.js"></script>
-    <link rel="stylesheet" crossorigin href="/family-genealogy/assets/demo-DmsRs3z0.css">
+    <script type="module" crossorigin src="/assets/index-BGabDFpI.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-DxNHVCNa.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DOezgP2i.css">
   </head>
   <body>
     <div id="root"></div>

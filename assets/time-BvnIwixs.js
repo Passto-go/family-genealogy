@@ -1,1 +1,0 @@
-function u(n,g=!0){if(!n)return"—";const r=new Date(n);if(Number.isNaN(r.getTime()))return"—";const t=new Date(r.getTime()+8*3600*1e3),e=i=>String(i).padStart(2,"0"),a=`${t.getUTCFullYear()}-${e(t.getUTCMonth()+1)}-${e(t.getUTCDate())}`;return g?`${a} ${e(t.getUTCHours())}:${e(t.getUTCMinutes())}:${e(t.getUTCSeconds())}`:a}export{u as f};
