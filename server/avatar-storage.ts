@@ -32,6 +32,31 @@ function detectContentType(key: string): string {
   return "application/octet-stream"
 }
 
+/**
+ * 按文件魔数（而非客户端声明的 Content-Type）判定真实图片格式。
+ * 用于上传校验与落盘扩展名——杜绝伪造 Content-Type 把非图片字节入库，
+ * 并保证扩展名与实际编码一致（否则在 X-Content-Type-Options: nosniff 下图片无法解码）。
+ */
+export function imageExtFromBytes(data: Buffer): "jpg" | "png" | "webp" | null {
+  if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) {
+    return "jpg"
+  }
+  if (
+    data.length >= 4 &&
+    data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47
+  ) {
+    return "png"
+  }
+  if (
+    data.length >= 12 &&
+    data[0] === 0x52 && data[1] === 0x49 && data[2] === 0x46 && data[3] === 0x46 &&
+    data[8] === 0x57 && data[9] === 0x45 && data[10] === 0x42 && data[11] === 0x50
+  ) {
+    return "webp"
+  }
+  return null
+}
+
 export const avatarStorage = {
   /**
    * 保存头像，返回逻辑 key（文件名）。
@@ -40,7 +65,8 @@ export const avatarStorage = {
    * 避免同 key 覆盖后被浏览器旧缓存遮挡（表现为裁剪/换图不生效）。
    */
   async save(memberId: number, data: Buffer): Promise<string> {
-    const key = `${memberId}-${Date.now()}.webp`
+    const ext = imageExtFromBytes(data) ?? "webp"
+    const key = `${memberId}-${Date.now()}.${ext}`
     fs.writeFileSync(path.join(AVATARS_DIR, key), data)
     return key
   },

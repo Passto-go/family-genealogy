@@ -1,4 +1,3 @@
-import type { ReactNode } from "react"
 import { Check, ChevronDown, LayoutGrid, Search, SlidersHorizontal, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { TREE_STYLE_LABELS, TREE_STYLE_ORDER, type TreeStyle } from "@/lib/tree-style"
@@ -19,11 +18,7 @@ type GenealogyToolbarProps = {
   shownCounts: { blood: number; extended: number }
   showExtended: boolean
   onShowExtendedChange: (showExtended: boolean) => void
-  /** 当前样式不列外衍（欧式/苏式已含配氏），开关置灰不可切换 */
-  extendedDisabled?: boolean
   extendedHint: string
-  /** 缩放按钮组（由父级按当前档位生成），与外衍提示同排：左缩放、右提示 */
-  zoomControls?: ReactNode
 }
 
 export function GenealogyToolbar({
@@ -40,9 +35,7 @@ export function GenealogyToolbar({
   shownCounts,
   showExtended,
   onShowExtendedChange,
-  extendedDisabled = false,
   extendedHint,
-  zoomControls,
 }: GenealogyToolbarProps) {
   const keyword = query.trim()
 
@@ -259,21 +252,14 @@ export function GenealogyToolbar({
                 type="button"
                 role="switch"
                 aria-checked={showExtended}
-                aria-disabled={extendedDisabled}
-                disabled={extendedDisabled}
                 aria-label="出嫁女子后裔（外衍）是否随谱展示"
-                title={extendedDisabled ? "当前样式已含配氏信息，不另列外衍" : undefined}
-                onClick={() => {
-                  if (extendedDisabled) return
-                  onShowExtendedChange(!showExtended)
-                }}
+                onClick={() => onShowExtendedChange(!showExtended)}
                 className={cn(
                   // after 伪元素把可点区域扩到约 44×32，视觉尺寸缩小后触控仍好按
                   "relative h-[16px] w-[28px] shrink-0 rounded-full border transition-colors duration-200 after:absolute after:-inset-2 after:content-['']",
                   showExtended
                     ? "border-ink-700 bg-ink-800"
                     : "border-paper-400 bg-paper-200 hover:border-ink-400",
-                  "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-paper-400",
                 )}
               >
                 <span
@@ -289,19 +275,13 @@ export function GenealogyToolbar({
                   showExtended ? "text-gold-700" : "text-muted-foreground",
                 )}
               >
-                {extendedDisabled ? "本样式不列" : showExtended ? "随谱展示" : "未随谱"}
+                {showExtended ? "随谱展示" : "未随谱"}
               </span>
             </div>
+            <p className="text-[10px] leading-[1.55] tracking-[0.03em] text-muted-foreground/80 sm:max-w-[300px]">
+              {extendedHint}
+            </p>
           </div>
-        </div>
-        {/* 缩放与外衍提示同排：左缩放、右说明，不额外占行 */}
-        <div className="mt-1 flex items-center gap-3">
-          {zoomControls ? <div className="shrink-0">{zoomControls}</div> : null}
-          <p className="min-w-0 text-[10px] leading-[1.55] tracking-[0.03em] text-muted-foreground/80 sm:ml-auto sm:max-w-[68%] sm:text-right">
-            {extendedDisabled
-              ? "欧式谱与苏式谱的小传已含配氏信息，按约定不另列外衍；切到其他样式可查看外衍。"
-              : extendedHint}
-          </p>
         </div>
       </div>
     </div>

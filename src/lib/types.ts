@@ -34,6 +34,8 @@ export interface Family {
   policeNumber: string
   /** 是否在前台公开展示：关闭后门户不列出、直接访问按不存在处理（仅超级管理员可改） */
   isPublished: boolean
+  /** 谱页是否排入出嫁女子后裔（两层，至孙辈，与世系图口径一致）：默认不含，仅超级管理员可改 */
+  printIncludeExtended: boolean
   createdBy: string
   updatedBy: string
   createdAt: string
@@ -76,6 +78,7 @@ export const EMPTY_FAMILY: FamilyDraft = {
   icpNumber: "",
   policeNumber: "",
   isPublished: true,
+  printIncludeExtended: false,
 }
 
 export const VISIBILITY_LABEL: Record<Visibility, string> = {

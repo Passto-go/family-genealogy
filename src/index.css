@@ -49,6 +49,7 @@
     /* 宝塔吊线：中性浅灰 1px，与参考图的横贯细线一致 */
     --baota-line: #dcdcdc;
     --tree-guide: #8299ab;
+    --tree-dot: #d9d3c6;
     --su-frame-line: #1c1c1c;
     --dot-blood: #b3261e;
     --dot-extended: #b9b3a8;
@@ -206,6 +207,7 @@
   --tree-line-soft: #3d6575;
   --baota-line: #3d6575;
   --tree-guide: #3f6373;
+  --tree-dot: #2c4a55;
   --su-frame-line: #3a5b67;
   --dot-blood: #e7958a;
   --dot-extended: #6f858d;
@@ -457,6 +459,7 @@ html.dark .print-page {
   --tree-line-soft: #d2cfc8;
   --baota-line: #dcdcdc;
   --tree-guide: #8299ab;
+  --tree-dot: #d9d3c6;
   --su-frame-line: #1c1c1c;
   --dot-blood: #b3261e;
   --dot-extended: #b9b3a8;
@@ -538,38 +541,3 @@ html.dark .print-page .dark\:bg-\[\#3f5f73\] { background-color: #8fa3b5; }
   stroke: #7fa8cc;
 }
 
-
-/* ─────────────────────────────────────────────────────────────
-   谱面画布（卡片谱 / 垂丝谱）：与纸面档统一为浅色纸，夜间不反转
-   —— 画布容器加 .paper-flow 后，卡片底色、描边、文字与装饰线
-   一律回落到日间取值，避免浅底上出现夜间浅字。
-   ───────────────────────────────────────────────────────────── */
-.paper-flow { color-scheme: light; }
-.paper-flow {
-  --node-ink: #173a47;
-  --tree-line: #173a47;
-  --tree-line-soft: #4c7f92;
-  --tree-guide: #cfc8b9;
-  --su-frame-line: #173a47;
-  --dot-blood: #b04a3a;
-  --dot-extended: #7ea0ae;
-}
-.paper-flow .bg-paper-50 { background-color: #fbfaf7; }
-.paper-flow .bg-paper-100 { background-color: #f4f1ea; }
-.paper-flow .bg-paper-200 { background-color: #ece7da; }
-.paper-flow .bg-paper-300 { background-color: #ded7c6; }
-.paper-flow .bg-white { background-color: #ffffff; }
-.paper-flow .border-paper-200 { border-color: #ece7da; }
-.paper-flow .border-paper-300 { border-color: #ded7c6; }
-.paper-flow .text-ink-800 { color: #12303b; }
-.paper-flow .text-ink-700 { color: #173a47; }
-.paper-flow .text-ink-600 { color: #1e4859; }
-.paper-flow .text-ink-500 { color: #2f6377; }
-.paper-flow .text-ink-400 { color: #4c7f92; }
-.paper-flow .text-muted-foreground { color: #5b6f78; }
-/* 谱面画布内的辅助色（字辈徽标 / 外衍角标 / 描边）同样回落日间值 */
-.paper-flow .bg-gold-50 { background-color: #f3ebd9; }
-.paper-flow .text-gold-700 { color: #8f7134; }
-.paper-flow .bg-ink-100 { background-color: #dce6ea; }
-.paper-flow .border-ink-400 { border-color: #4c7f92; }
-.paper-flow .border-ink-700 { border-color: #173a47; }

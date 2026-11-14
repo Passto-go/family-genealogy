@@ -50,8 +50,6 @@ export interface LayoutOptions {
   nodeSize?: { width: number; height: number }
   /** 同辈间距与世代间距（紧凑档传更小值）；省略则沿用默认 */
   gaps?: { h: number; v: number }
-  /** 全量成员索引（含外姓配偶）：用于给节点解析配偶，配偶本身不入图 */
-  spouseIndex?: Map<number, Member>
 }
 
 /**
@@ -206,9 +204,7 @@ export function buildLayout(
   const nodes: MemberFlowNode[] = visibleLineage.map((member) => {
     const position = positions.get(member.id) ?? { x: 0, y: 0 }
     const isCollapsed = Boolean(member.branch && folded.has(member.branch))
-    const spouse = member.spouseId
-      ? (byId.get(member.spouseId) ?? options.spouseIndex?.get(member.spouseId) ?? null)
-      : null
+    const spouse = member.spouseId ? (byId.get(member.spouseId) ?? null) : null
     return {
       id: String(member.id),
       type: "member",

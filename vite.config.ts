@@ -10,8 +10,6 @@ function buildDateLabelForDefine(): string {
 }
 
 export default defineConfig({
-  /** 主应用构建恒为 false，只读演示站（vite.demo.config.ts）才置 true */
-  define: { __DEMO__: "false" },
   plugins: [react()],
   resolve: {
     alias: {
