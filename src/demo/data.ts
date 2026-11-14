@@ -87,7 +87,6 @@ export const demoData: DemoPayload = {
     "icpNumber": "",
     "policeNumber": "",
     "isPublished": true,
-    "printIncludeExtended": false,
     "updatedAt": "2026-11-09T12:52:22.864Z"
    },
    "stats": {
