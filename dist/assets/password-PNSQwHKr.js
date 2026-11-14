@@ -1,1 +1,0 @@
-function l(r,s,e){return r.length<8?"新密码至少 8 位":[/[A-Z]/,/[a-z]/,/[0-9]/,/[^A-Za-z0-9]/].filter(t=>t.test(r)).length<3?"新密码需包含大写字母、小写字母、数字、特殊符号中的至少 3 类":e&&r.toLowerCase().includes(e.toLowerCase())?"新密码不得包含账号名":r===s?"新密码不得与当前密码相同":null}export{l as v};
