@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#12303B" />
+    <meta name="description" content="家族族谱只读演示：示例数据，无法编辑。" />
+    <title>时光家谱 · 只读演示</title>
+    <script>
+      // 与主站一致：首屏同步应用主题，避免挂载前后的明暗闪烁
+      (function () {
+        try {
+          var hour = new Date().getHours();
+          var dark = hour < 6 || hour >= 19;
+          var el = document.documentElement;
+          el.classList.toggle("dark", dark);
+          el.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/family-genealogy/assets/demo-B-UY4k8U.js"></script>
+    <link rel="stylesheet" crossorigin href="/family-genealogy/assets/demo-DOezgP2i.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
