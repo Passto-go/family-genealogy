@@ -84,7 +84,6 @@ function MemberNodeInner({ data, selected }: NodeProps<MemberFlowNode>) {
               外衍
             </span>
           ) : null}
-          {/* 身份/职业/功名（member.title）不在卡片上展示，点开族人详情页查看 */}
         </div>
 
         <div

@@ -63,6 +63,7 @@ export const avatarStorage = {
    * key 携带毫秒时间戳：每次上传生成新 URL，配合 /avatars 路由的
    * Cache-Control: immutable 实现「内容不变缓存永久、内容更新即刻生效」，
    * 避免同 key 覆盖后被浏览器旧缓存遮挡（表现为裁剪/换图不生效）。
+   * 扩展名由魔数判定的真实格式决定（JPG / PNG / WebP），不再固定 .webp。
    */
   async save(memberId: number, data: Buffer): Promise<string> {
     const ext = imageExtFromBytes(data) ?? "webp"

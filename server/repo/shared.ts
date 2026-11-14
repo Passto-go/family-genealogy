@@ -34,7 +34,6 @@ export const FAMILY_COLUMNS: Record<keyof FamilyInput, string> = {
   policeNumber: "police_number",
   showExtendedLineage: "show_extended_lineage",
   isPublished: "is_published",
-  printIncludeExtended: "print_include_extended",
 }
 
 export function familyValue(
@@ -46,8 +45,7 @@ export function familyValue(
     return JSON.stringify(
       raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {},
     )
-  if (key === "isPrimary" || key === "isPublished" || key === "printIncludeExtended")
-    return raw ? 1 : 0
+  if (key === "isPrimary" || key === "isPublished") return raw ? 1 : 0
   if (raw === undefined || raw === null) return null
   if (typeof raw === "boolean") return raw ? 1 : 0
   return raw as string | number

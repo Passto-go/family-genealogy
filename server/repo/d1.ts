@@ -473,6 +473,14 @@ export function createD1Repo(db: D1Like): Repo {
       return Number(found?.n ?? 0)
     },
 
+    async countGenerations(familyId): Promise<number> {
+      const found = await row(
+        "SELECT COUNT(DISTINCT generation) AS n FROM member WHERE family_id = ?",
+        familyId,
+      )
+      return Number(found?.n ?? 0)
+    },
+
     async getAdminByUsername(username): Promise<AdminUser | null> {
       const found = await row("SELECT * FROM admin_user WHERE username = ?", username)
       return found ? rowToAdmin(found) : null

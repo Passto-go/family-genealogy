@@ -73,7 +73,7 @@ function bootstrap(repo: Repo, env: Env): Promise<void> {
         env,
         "ALTER TABLE family ADD COLUMN is_published INTEGER NOT NULL DEFAULT 1",
       )
-      // 谱页是否排入出嫁女子后裔（两层，至孙辈）：默认不含
+      // 谱页是否排入外衍（默认关）
       await addColumnIfMissing(
         env,
         "ALTER TABLE family ADD COLUMN print_include_extended INTEGER NOT NULL DEFAULT 0",

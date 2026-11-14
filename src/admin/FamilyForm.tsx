@@ -317,7 +317,6 @@ function toDraft(family: Family): FamilyDraft {
     icpNumber: family.icpNumber,
     policeNumber: family.policeNumber,
     isPublished: family.isPublished,
-    printIncludeExtended: family.printIncludeExtended,
   }
 }
 
@@ -772,14 +771,6 @@ export default function FamilyForm() {
           </label>
         </div>
 
-        <ToggleRow
-          title="排入出嫁女子后裔（外衍）"
-          statusOn="已排入"
-          statusOff="不排入"
-          description="开启：出嫁女子的后裔续排子女、孙辈两层，纳入世系图与谱页；关闭：仅收录本族血脉，出嫁女子只记本人。"
-          checked={draft.printIncludeExtended}
-          onToggle={() => update("printIncludeExtended", !draft.printIncludeExtended)}
-        />
       </Section>
 
       <Section title="名号" description="用于导航、标题与题识">

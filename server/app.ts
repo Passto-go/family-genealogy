@@ -4,6 +4,8 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie"
 import { HTTPException } from "hono/http-exception"
 import {
   SESSION_COOKIE,
+  TENANT_TTL_MS,
+  TENANT_TTL_MP_MS,
   createSessionToken,
   createTenantToken,
   createPreAuthToken,
@@ -26,7 +28,7 @@ import {
 import { readEnv } from "./config.js"
 import { lockRemaining, recordFailure, recordSuccess } from "./rate-limit.js"
 import { formatBeijing } from "./time.js"
-import { avatarStorage } from "./avatar-storage.js"
+import { avatarStorage, imageExtFromBytes } from "./avatar-storage.js"
 import type {
   AdminUser,
   Family,
@@ -599,7 +601,6 @@ function publicFamily(family: Family) {
     icpNumber: family.icpNumber,
     policeNumber: family.policeNumber,
     isPublished: family.isPublished,
-    printIncludeExtended: family.printIncludeExtended,
     updatedAt: family.updatedAt,
   }
 }
@@ -660,7 +661,7 @@ function isFamilyFieldUnchanged(key: string, value: unknown, current: Family): b
       JSON.stringify(Object.keys(record).sort().map((k) => [k, record[k]]))
     return stable(parseBranchHeads(value)) === stable(current.branchHeads ?? {})
   }
-  if (key === "isPrimary" || key === "isPublished" || key === "printIncludeExtended") {
+  if (key === "isPrimary" || key === "isPublished") {
     return Boolean((current as unknown as Record<string, unknown>)[key]) === Boolean(value)
   }
   return String((current as unknown as Record<string, unknown>)[key] ?? "") === String(value ?? "")
@@ -738,8 +739,6 @@ function baseFamilyInput(body: Record<string, unknown>): FamilyInput {
     showExtendedLineage: false,
     // 新建族谱默认在前台展示；关闭需由超级管理员显式操作
     isPublished: body.isPublished !== false,
-    // 谱页是否排入出嫁女子后裔：默认不含，开启需由超级管理员显式操作
-    printIncludeExtended: body.printIncludeExtended === true,
   }
   return input
 }
@@ -1047,10 +1046,18 @@ export function createApp(repo: Repo, secret: string) {
     // 未设置访问密码时，门禁无从校验，按公开处理，避免永久锁死族谱
     if (!family.accessPasswordHash) return
 
-    const token = getCookie(
+    // 浏览器端走 Cookie；小程序（wx.request）不自动管理 Cookie，回退读 Authorization: Bearer。
+    // 两条通道解出的是同一种 tenant 令牌，口令指纹校验一视同仁。
+    let token = getCookie(
       c as unknown as Parameters<typeof getCookie>[0],
       tenantCookieName(family.slug),
     )
+    if (!token) {
+      const raw =
+        (c.req as { header?: (name: string) => string | undefined }).header?.("Authorization") ?? ""
+      const matched = /^Bearer\s+(\S+)$/i.exec(raw.trim())
+      token = matched ? matched[1] : undefined
+    }
     const payload = await readTenantToken(token, secret)
     // 管理员登录不等于持有族谱口令：口令校验对所有人一视同仁，
     // 并以口令指纹兜底，确保改密后旧凭证立即失效。
@@ -1060,6 +1067,23 @@ export function createApp(repo: Repo, secret: string) {
       payload.pwd !== (await passwordFingerprint(family.accessPasswordHash))
     ) {
       throw new HTTPException(401, { message: "TENANT_LOCKED" })
+    }
+  }
+
+  /**
+   * 公开端点族人字段裁剪：在世者只留姓名、世次、房支等身份信息，
+   * 隐去生年、卒年、生平、葬地与头像。裁剪必须在服务端完成——下发全量再由客户端隐藏，
+   * 抓包即可还原，等于没做。网页端世系图与小程序脱敏口径保持一致。
+   */
+  function maskLivingMember(member: Member): Member {
+    if (!member.isAlive) return member
+    return {
+      ...member,
+      birthYear: "",
+      deathYear: "",
+      bio: "",
+      burialPlace: "",
+      avatarKey: "",
     }
   }
 
@@ -1091,6 +1115,7 @@ export function createApp(repo: Repo, secret: string) {
       families.map(async (family) => ({
         ...publicFamily(family),
         memberCount: await repo.countMembers(family.id),
+        generationCount: await repo.countGenerations(family.id),
       })),
     )
     return c.json({ families: list })
@@ -1312,23 +1337,6 @@ export function createApp(repo: Repo, secret: string) {
     return c.json(computeStats(members, family.updatedAt))
   })
 
-  /**
-   * 网页端公开谱成员接口：对在世成员脱敏，与小程序口径一致。
-   * 隐去生年、卒年、生平、葬地与头像。裁剪必须在服务端完成——下发全量再由客户端隐藏，
-   * 抓包即可还原，等于没做。网页端世系图与小程序脱敏口径保持一致。
-   */
-  function maskLivingMember(member: Member): Member {
-    if (!member.isAlive) return member
-    return {
-      ...member,
-      birthYear: "",
-      deathYear: "",
-      bio: "",
-      burialPlace: "",
-      avatarKey: "",
-    }
-  }
-
   // ── 世系图数据：需该族谱访问密码（管理员直通） ──
   app.get("/api/t/:slug/members", async (c) => {
     await requireTenantAccess(c as never)
@@ -1453,7 +1461,11 @@ export function createApp(repo: Repo, secret: string) {
     }
 
     recordSuccess(key)
-    const { token, maxAge } = await createTenantToken(family, secret)
+    // 小程序渠道：Cookie 对 wx.request 无用，改为 JSON 下发令牌并延长至 7 天。
+    // 网页端维持 Cookie + 1 天，且不回传令牌，避免多一条可被脚本读取的出口。
+    const isMiniProgram = str(body.channel) === "mp"
+    const ttlMs = isMiniProgram ? TENANT_TTL_MP_MS : TENANT_TTL_MS
+    const { token, maxAge, expiresAt } = await createTenantToken(family, secret, ttlMs)
     setCookie(c, tenantCookieName(family.slug), token, {
       httpOnly: true,
       sameSite: "Lax",
@@ -1461,6 +1473,7 @@ export function createApp(repo: Repo, secret: string) {
       path: "/",
       maxAge,
     })
+    if (isMiniProgram) return c.json({ ok: true, token, expiresAt })
     return c.json({ ok: true })
   })
 
@@ -1942,9 +1955,6 @@ export function createApp(repo: Repo, secret: string) {
     }
     // 前台展示开关：关闭后门户不列出、地址访问按不存在处理（仅超级管理员，见敏感字段拦截）
     if ("isPublished" in body) patch.isPublished = Boolean(body.isPublished)
-    // 谱页含外衍开关：仅影响谱页（打印 / 排版）输出，前台交互视图仍由访客自选（仅超级管理员，见敏感字段拦截）
-    if ("printIncludeExtended" in body)
-      patch.printIncludeExtended = Boolean(body.printIncludeExtended)
     if ("theme" in body) patch.theme = str(body.theme)
 
     const family = await repo.updateFamily(id, patch, session.uid)
@@ -2362,10 +2372,13 @@ export function createApp(repo: Repo, secret: string) {
     const upload = file as { arrayBuffer: () => Promise<ArrayBuffer>; size: number; type: string }
     const MAX_BYTES = 5 * 1024 * 1024
     if (upload.size > MAX_BYTES) throw new HTTPException(413, { message: "头像文件过大（上限 5MB）" })
-    const ALLOWED = ["image/jpeg", "image/png", "image/webp"]
-    if (!ALLOWED.includes(upload.type)) throw new HTTPException(415, { message: "仅支持 JPG / PNG / WebP 格式" })
 
     const buffer = Buffer.from(await upload.arrayBuffer())
+    // M-2：按文件魔数（而非客户端自报的 Content-Type）校验真实图片格式，
+    // 杜绝伪造 Content-Type 把非图片字节入库；落盘扩展名由真实格式决定（见 avatarStorage.save）。
+    if (!imageExtFromBytes(buffer)) {
+      throw new HTTPException(415, { message: "仅支持 JPG / PNG / WebP 格式" })
+    }
     if (existing.avatarKey) await avatarStorage.remove(existing.avatarKey)
     const key = await avatarStorage.save(id, buffer)
     await repo.updateMember(id, { ...existing, avatarKey: key } as MemberInput, session.uid)

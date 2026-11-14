@@ -1,11 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react"
-import { useSearchParams } from "react-router-dom"
-import { Loader2 } from "lucide-react"
+import { useMemo, useState, type CSSProperties } from "react"
 import { ReactFlow, type Node } from "@xyflow/react"
-/* 谱页是独立路由，冷启动（直接打开 /print 或另存 PDF）时若没先访问世系图，
-   画布就没有 React Flow 的定位样式，节点会全部溢出纸面、看起来「整页空白」。 */
+/* 卡片/垂丝档复用 React Flow 渲染，需带上定位样式，否则节点会溢出纸面 */
 import "@xyflow/react/dist/style.css"
-import { UnlockPanel } from "@/components/site/UnlockPanel"
 import { MemberNode } from "@/components/tree/MemberNode"
 import { SuMemberNode } from "@/components/tree/SuMemberNode"
 import { IndentTree } from "@/components/tree/IndentTree"
@@ -13,21 +9,10 @@ import { H_GAP, NODE_HEIGHT, NODE_WIDTH, V_GAP, buildLayout, type LayoutOptions 
 import { detectFontBoost } from "@/lib/minFontSize"
 import { PaperSheets, type PaperLayout } from "@/components/print/PaperSheets"
 import { SuShiSheet } from "@/components/print/SuShiSheet"
-import { buildMemberMemo } from "@/components/print/memberMemo"
-import { lineageOrder } from "@/lib/lineageOrder"
-import { useTenant } from "@/lib/tenant-context"
-import {
-  computeClanBloodIds,
-  computeVisibleLineageIds,
-  generationLabel,
-  toChineseNumber,
-  type Family,
-  type Member,
-} from "@/lib/types"
-import { cn } from "@/lib/utils"
+import { toChineseNumber, type Family, type Member } from "@/lib/types"
 
 /**
- * 谱页（/t/:slug/print）：只读纸面视图，独立于 SiteLayout，不带站点导航与水印。
+ * 谱面渲染器：世系图页面 6 档切换的展示层（原独立谱页已并入世系图页面）。
  *
  * 六档按产出方式分三类；key 与 URL（?v=）已重定：欧式 oushi→euro、垂丝 chuisi→vertical（key 同步），旧 slug 经兼容映射仍可用：
  * - 纸面分卷：欧式谱 euro / 欧苏谱 combo / 苏式谱 su-shi（SuShiSheet，五世一图垂珠体）
@@ -50,22 +35,7 @@ const LAYOUTS = [
   { key: "vertical", label: "垂丝谱", slug: "vertical" },
 ] as const
 
-type PrintLayout = (typeof LAYOUTS)[number]["key"]
-
-/**
- * 地址栏档位别名：只影响链接写法，组件与样式仍按内部 key 走。
- * 旧书签里的 ?v=su / ?v=oushi / ?v=chuisi 写法照旧能打开（经兼容映射），不做重定向。
- */
-const LAYOUT_SLUGS: Record<string, PrintLayout> = {
-  ...Object.fromEntries(LAYOUTS.map((item) => [item.slug, item.key])),
-  /* 兼容旧链接（历史 slug 仍可用，避免旧书签失效） */
-  euro: "euro",
-  oushi: "euro", // 旧欧式谱
-  su: "vertical", // 历史垂丝谱 ?v=su → 现 vertical
-  chuisi: "vertical", // 旧垂丝谱
-}
-
-const slugOf = (key: PrintLayout) => LAYOUTS.find((item) => item.key === key)?.slug ?? key
+export type PrintLayout = (typeof LAYOUTS)[number]["key"]
 
 /** 屏幕画布档：整族缩放一页，不参与纸面分卷 */
 const FLOW_LAYOUTS = ["card", "vertical"] as const
@@ -109,10 +79,13 @@ function imprintOf(year: number): { year: string; ganzhi: string } {
 function PrintFlow({
   layout,
   people,
+  allMembers,
   family,
 }: {
   layout: FlowLayout
   people: Member[]
+  /** 全量成员：卡片谱据此解析配偶（配偶不入图，只作卡片内的一列） */
+  allMembers: Member[]
   family: Family
 }) {
   /* 垂丝谱另走纸面装帧：左竖排谱名、世次标尺、右纪年落款 */
@@ -120,6 +93,7 @@ function PrintFlow({
   /* 浏览器最小字号把 7–9px 小字强行放大，节点内文字会被卡片框裁掉。
      整张画布的度量（节点、间距、字号）同比放大到下限之上，再由 --flow-scale 收回。 */
   const [boost] = useState(() => detectFontBoost())
+  const spouseIndex = useMemo(() => new Map(allMembers.map((m) => [m.id, m])), [allMembers])
   const built = useMemo(() => {
     const options: LayoutOptions = isChuisi
       ? {
@@ -129,9 +103,11 @@ function PrintFlow({
       : {
           nodeSize: { width: NODE_WIDTH * boost, height: NODE_HEIGHT * boost },
           gaps: { h: H_GAP * boost, v: V_GAP * boost },
+          // 卡片谱：始终解析配偶并在卡片内单列展示，不受外衍开关影响
+          spouseIndex,
         }
     return buildLayout(people, options)
-  }, [people, isChuisi, boost])
+  }, [people, isChuisi, boost, spouseIndex])
   const nodeType = isChuisi ? "vertical" : "member"
 
   const nodes = useMemo<Node[]>(
@@ -274,173 +250,79 @@ function PrintFlow({
     </section>
   )
 }
-
-/** 手机端流式简化预览：按世代分组，纸面版式与画布在窄屏隐藏 */
-function MobilePreview({
-  people,
-  allMembers,
+export function SpectrumView({
+  layout,
   family,
-  legend,
+  members,
+  allMembers,
+  frameMembers,
+  visibleIds,
+  bloodIds,
+  matchedIds,
+  onSelect,
 }: {
-  people: Member[]
-  allMembers: Member[]
+  layout: PrintLayout
   family: Family
-  legend: string
+  members: Member[]
+  allMembers: Member[]
+  /** 版式基准集合（恒含外衍），用于分卷与列宽，避免切换开关时整册跳版 */
+  frameMembers: Member[]
+  visibleIds: Set<number>
+  bloodIds: Set<number>
+  /** 搜索命中成员：纸面/树形档据此给姓名加高亮 */
+  matchedIds?: Set<number>
+  /** 树形档点击回调；不传即只读 */
+  onSelect?: (member: Member) => void
 }) {
-  const gens = [...new Set(people.map((m) => Math.max(1, m.generation)))].sort((a, b) => a - b)
-  /* 小传的配氏与子女按全量谱系取，外衍关闭时出嫁女的子女也不至于被写成「无嗣」 */
-  const byId = new Map(allMembers.map((m) => [m.id, m]))
-  const childrenOf = (id: number) => allMembers.filter((m) => m.fatherId === id || m.motherId === id)
-  /* 与纸面同一份谱序：房支优先、房内长幼 */
-  const ordered = lineageOrder(people, family.branches)
-
-  return (
-    <div className="print-mobile">
-      <p className="print-mobile-tip">
-        手机端为流式预览。建议用桌面浏览器打开本页，通过「打印 → 另存为 PDF」导出（默认 A4，可在打印对话框改选尺寸）。
-      </p>
-      <h2 className="font-song text-[19px] tracking-[0.14em]">{family.name}</h2>
-      {gens.map((gen) => (
-        <section className="print-mobile-gen" key={gen}>
-          <h3>{generationLabel(gen)}</h3>
-          <ul>
-            {ordered
-              .filter((m) => Math.max(1, m.generation) === gen)
-              .map((m) => (
-                <li key={m.id}>
-                  <b>{m.name}</b>
-                  <span>{buildMemberMemo(m, byId, childrenOf)}</span>
-                </li>
-              ))}
-          </ul>
-        </section>
-      ))}
-      <p className="print-mobile-legend">{legend}</p>
-    </div>
-  )
-}
-
-export default function PrintPage() {
-  const { family, members, membersState, status, ensureMembers } = useTenant()
-  const [searchParams, setSearchParams] = useSearchParams()
-
-  useEffect(() => {
-    void ensureMembers()
-  }, [ensureMembers])
-
-  const raw = searchParams.get("v")
-  const layout: PrintLayout = (raw && LAYOUT_SLUGS[raw]) || "euro"
-  const scope = useMemo(() => {
-    const ids = computeVisibleLineageIds(members, family?.printIncludeExtended ?? false)
-    /* 版式基准：含外衍的完整范围。纸面档的卷数、列宽按它算，
-       外衍开关只决定列内条目多少，避免切换时整册跳版 */
-    const frameIds = computeVisibleLineageIds(members, true)
-    return {
-      ids,
-      bloodIds: computeClanBloodIds(members),
-      people: members.filter((m) => ids.has(m.id)),
-      peopleWithExtended: members.filter((m) => frameIds.has(m.id)),
-    }
-  }, [members, family?.printIncludeExtended])
-
-  if (membersState === "locked" || membersState === "private") {
-    return <UnlockPanel />
-  }
-
-  if (status !== "loaded" || !family || membersState !== "ready") {
-    return (
-      <div className="print-loading">
-        <Loader2 className="size-4 animate-spin" />
-        正在展卷
-      </div>
-    )
-  }
-
-  const legend = family.printIncludeExtended
-    ? "外衍仅录至孙辈，如当事人要求隐去，可通过反馈联系族内修订。"
-    : "本谱仅录本族血脉，出嫁女子只记本人；如需补录，可通过反馈联系族内修订。"
   const isPaper = layout === "euro" || layout === "combo"
-
-  const setLayout = (next: PrintLayout) => {
-    /* 每档都写明 ?v=，地址栏可直接看出当前档位、也便于分享 */
-    setSearchParams({ v: slugOf(next) }, { replace: true })
-  }
-
   return (
-    <div className="print-page">
-      {/* 欧苏谱是右图左传的对开：按 A3 横排出一页，A4 竖排下右半幅的图会缩到看不清 */}
-      <style>{layout === "combo" ? `@page{size:A3 landscape;margin:12mm}` : `@page{margin:12mm}`}</style>
-      <div className="print-toolbar u-no-print">
-        <div className="print-toolbar-inner">
-          <span className="font-song text-[14px] tracking-[0.14em]">{family.name} · 谱页</span>
-          <div className="print-tabs">
-            {LAYOUTS.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setLayout(item.key)}
-                className={cn("print-tab", layout === item.key && "print-tab--active")}
-              >
-                {item.label}
-              </button>
-            ))}
+    <div className="print-body">
+      {layout === "su-shi" ? (
+        <SuShiSheet
+          people={members}
+          family={family}
+          allMembers={allMembers}
+          bloodIds={bloodIds}
+          matchedIds={matchedIds}
+        />
+      ) : isPaper ? (
+        <PaperSheets
+          members={members}
+          allMembers={allMembers}
+          frameMembers={frameMembers}
+          family={family}
+          bloodIds={bloodIds}
+          layout={layout as PaperLayout}
+          matchedIds={matchedIds}
+        />
+      ) : isFlowLayout(layout) ? (
+        <PrintFlow layout={layout} people={members} allMembers={allMembers} family={family} />
+      ) : isTreeLayout(layout) ? (
+        <section className="print-sheet print-tree">
+          <header className="print-sheet-head">
+            <span className="font-song text-[15px] tracking-[0.18em]">
+              {LAYOUTS.find((item) => item.key === layout)?.label}
+            </span>
+            <span className="text-[10px] tracking-[0.16em]">全部展开</span>
+          </header>
+          <div className="print-tree-body">
+            <IndentTree
+              members={members}
+              visibleIds={visibleIds}
+              bloodIds={bloodIds}
+              forceExpand
+              hideDetail
+              selectedId={null}
+              matchedIds={matchedIds}
+              onSelect={onSelect ?? (() => {})}
+            />
           </div>
-          <span className="print-toolbar-hint">
-            浏览器菜单 → 打印 → 另存为 PDF（欧式长卷自动缩放；欧苏对开按 A3 横排出页）
-          </span>
-        </div>
-      </div>
-
-      <p className="print-legend">{legend}</p>
-
-      <div className="print-body">
-        {layout === "su-shi" ? (
-          <SuShiSheet
-            people={scope.people}
-            family={family}
-            allMembers={members}
-            bloodIds={scope.bloodIds}
-          />
-        ) : isPaper ? (
-          <PaperSheets
-            members={scope.people}
-            allMembers={members}
-            frameMembers={scope.peopleWithExtended}
-            family={family}
-            bloodIds={scope.bloodIds}
-            layout={layout as PaperLayout}
-          />
-        ) : isFlowLayout(layout) ? (
-          <PrintFlow layout={layout} people={scope.people} family={family} />
-        ) : isTreeLayout(layout) ? (
-          <section className="print-sheet print-tree">
-            <header className="print-sheet-head">
-              <span className="font-song text-[15px] tracking-[0.18em]">
-                {LAYOUTS.find((item) => item.key === layout)?.label}
-              </span>
-              <span className="text-[10px] tracking-[0.16em]">全部展开</span>
-            </header>
-            <div className="print-tree-body">
-              <IndentTree
-                members={scope.people}
-                visibleIds={scope.ids}
-                bloodIds={scope.bloodIds}
-                forceExpand
-                selectedId={null}
-                onSelect={() => {}}
-              />
-            </div>
-            <footer className="print-sheet-foot">
-              <span>缩进为世代，虚线为外衍。</span>
-              <span>第 1 / 1 页</span>
-            </footer>
-          </section>
-        ) : null}
-      </div>
-
-      <div className="print-mobile-wrap u-no-print">
-        <MobilePreview people={scope.people} allMembers={members} family={family} legend={legend} />
-      </div>
+          <footer className="print-sheet-foot">
+            <span>缩进为世代，虚线为外衍。</span>
+            <span>第 1 / 1 页</span>
+          </footer>
+        </section>
+      ) : null}
     </div>
   )
 }

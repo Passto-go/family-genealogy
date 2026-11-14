@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties } from "react"
 import { cn } from "@/lib/utils"
 import { detectFontBoost } from "@/lib/minFontSize"
@@ -32,8 +32,10 @@ const MAX_COL_W = 260
 const MAX_MEMO_LEN = 40
 
 /** 欧苏结合按累计列宽分卷用：预算取 A3 横排后左半幅小传的真实可用宽度。
- *  旧值 1360 远超纸面，超出的部分会被 overflow 裁掉（表现为末世代整列不见） */
-const MAX_BIO_WIDTH = 820
+ *  分卷规则＝「按左侧文字量贪心装箱」：把相邻世代依次放进当前卷，
+ *  直到再加入下一代就超出本宽为止；故某一世填不满时，下一代只要整体放得下就并到同一卷。
+ *  该值同时决定小传区的固定宽度（见下方 +40 余量）：所有分页因此等宽。 */
+const MAX_BIO_WIDTH = 780
 /** 单栏宽度，与 print.css 的 .combo-person width 联动 */
 const BIO_COL_W = 28
 /** 世代表头栏宽度，与 print.css 的 .combo-col__head 联动 */
@@ -45,10 +47,8 @@ const CHART_FONT = 12.5
 const CHART_PAD_X = 7
 const CHART_GAP_X = 14
 const CHART_ROW_H = 92
-/** 单行可用宽度，超出即整块换行 */
-const CHART_MAX_W = 620
-/** 行与行之间留白 */
-const CHART_ROW_GAP = 26
+/** 卷内图左侧留给世次标尺的宽度（与 ComboChart 内的标签定位联动） */
+const CHART_RULER_W = 56
 
 export type PaperLayout = "euro" | "combo"
 
@@ -61,6 +61,8 @@ interface Props {
   family: Family
   bloodIds: Set<number>
   layout: PaperLayout
+  /** 搜索命中的成员：姓名加深色强调 */
+  matchedIds?: Set<number>
 }
 
 const genOf = (m: Member) => Math.max(1, m.generation)
@@ -164,20 +166,12 @@ interface EuroSlot {
   slot: number
 }
 
-interface EuroBand {
-  gen: number
-  /** 该世有人占据的列位（升序；列位 0 为最右） */
-  slots: number[]
-  /** 与 slots 一一对应的列宽，按该世该人自身的小传量自适应 */
-  widths: number[]
-}
-
 interface EuroChart {
   index: number
   gens: number[]
   people: EuroSlot[]
-  /** 每一世各占的列与列宽 */
-  bands: EuroBand[]
+  /** 全图共用的列位宽度（下标即 slot，0 为最右列）：各世共享，故父子同 slot 上下对齐 */
+  columns: number[]
 }
 
 interface EuroLayout {
@@ -262,23 +256,16 @@ function useEuroLayout(
         cursor += root.span
       }
       const slots: EuroSlot[] = chartPeople.map((m) => ({ member: m, slot: nodeOf.get(m.id)!.slot }))
-      // 每一世单独起排：该世有人的列位才占宽，列宽按该人自身的小传量自适应。
-      // 旧法按列位跨世代取最宽，某世空格也照占整列，纸面右侧便空出一大段，
-      // 且相邻两列紧贴无间距；改为逐世成行后，右侧贴齐、行内留白一致。
-      const bands: EuroBand[] = chart.gens.map((gen) => {
-        // slot 降序：grid 从左到右，小 slot 落在最右，符合自右向左长幼
-        const inGen = slots
-          .filter((s) => genOf(s.member) === gen)
-          .sort((a, b) => b.slot - a.slot)
-        return {
-          gen,
-          slots: inGen.map((s) => s.slot),
-          widths: inGen.map((s) =>
-            Math.min(MAX_COL_W, Math.max(MIN_COL_W, personWidth(s.member, byId, childrenOf))),
-          ),
-        }
-      })
-      result.push({ index: chart.index, gens: chart.gens, people: slots, bands })
+      // 全图共用一套列位网格：同一 slot 在各世代落在同一横坐标，
+      // 故父与长子（同 slot）上下严格对齐；该世此列无人时留空，不把后列前移。
+      // 列宽取该 slot 上所有人小传量的最大值，保证各世共用时都不溢出。
+      const maxSlot = slots.reduce((mx, s) => Math.max(mx, s.slot), 0)
+      const columns: number[] = new Array(Math.max(0, maxSlot) + 1).fill(MIN_COL_W)
+      for (const s of slots) {
+        const w = Math.min(MAX_COL_W, Math.max(MIN_COL_W, personWidth(s.member, byId, childrenOf)))
+        columns[s.slot] = Math.max(columns[s.slot], w)
+      }
+      result.push({ index: chart.index, gens: chart.gens, people: slots, columns })
     }
     return { charts: result }
   }, [members, family, byId, childrenOf])
@@ -288,17 +275,22 @@ function EuroEntry({
   item,
   byId,
   childrenOf,
+  matched,
 }: {
   item: EuroSlot
   byId: Map<number, Member>
   childrenOf: (id: number) => Member[]
+  matched?: boolean
 }) {
   const m = item.member
   const { honor, lines, children } = buildEuroMemo(m, byId, childrenOf)
   return (
     <div className="euro-person">
       {honor ? <div className="euro-person__honor">{honor}</div> : null}
-      <div className="euro-person__name" title={m.name}>{m.name}</div>
+      <div className="euro-person__idcol">
+        <div className={cn("euro-person__name", matched && "print-hit")} title={m.name}>{m.name}</div>
+        <span className="euro-person__no">({m.id})</span>
+      </div>
       <div className="euro-memo">
         <div className="euro-memo__main">
           {lines.map((line, i) => (
@@ -322,7 +314,6 @@ function EuroEntry({
           </div>
         ) : null}
       </div>
-      <span className="euro-person__no">({m.id})</span>
     </div>
   )
 }
@@ -333,12 +324,14 @@ function EuroChartSection({
   byId,
   childrenOf,
   bloodIds,
+  matchedIds,
 }: {
   chart: EuroChart
   family: Family
   byId: Map<number, Member>
   childrenOf: (id: number) => Member[]
   bloodIds: Set<number>
+  matchedIds?: Set<number>
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -354,15 +347,22 @@ function EuroChartSection({
       <div className="euro-chart__body">
         <div className="euro-scroll" ref={scrollRef}>
           <div className="euro-bands">
-            {chart.bands.map((band) => (
+            {chart.gens.map((gen) => (
               <div
                 className="euro-band"
-                key={band.gen}
-                style={{ gridTemplateColumns: band.widths.map((w) => `${w}px`).join(" ") }}
+                key={gen}
+                style={{
+                  gridTemplateColumns: [...chart.columns]
+                    .reverse()
+                    .map((w) => `${w}px`)
+                    .join(" "),
+                }}
               >
-                {band.slots.map((slot) => {
+                {chart.columns.map((_, i) => {
+                  // 列位 0 在最右：grid 从左到右，故 slot 由大到小排布；无人处留空格
+                  const slot = chart.columns.length - 1 - i
                   const item = chart.people.find(
-                    (x) => x.slot === slot && genOf(x.member) === band.gen,
+                    (x) => x.slot === slot && genOf(x.member) === gen,
                   )
                   return (
                     <div
@@ -372,7 +372,14 @@ function EuroChartSection({
                       )}
                       key={slot}
                     >
-                      {item ? <EuroEntry item={item} byId={byId} childrenOf={childrenOf} /> : null}
+                      {item ? (
+                        <EuroEntry
+                          item={item}
+                          byId={byId}
+                          childrenOf={childrenOf}
+                          matched={matchedIds?.has(item.member.id)}
+                        />
+                      ) : null}
                     </div>
                   )
                 })}
@@ -399,12 +406,14 @@ function EuroScroll({
   byId,
   childrenOf,
   bloodIds,
+  matchedIds,
 }: {
   euro: EuroLayout
   family: Family
   byId: Map<number, Member>
   childrenOf: (id: number) => Member[]
   bloodIds: Set<number>
+  matchedIds?: Set<number>
 }) {
   /* 行传里的编号、配偶、子嗣是 7–9px 小字，落在定宽格子里；
      浏览器最小字号会把它们撑出格子，这里把格子内小字同比放大再由 zoom 收回 */
@@ -423,6 +432,7 @@ function EuroScroll({
           byId={byId}
           childrenOf={childrenOf}
           bloodIds={bloodIds}
+          matchedIds={matchedIds}
         />
       ))}
     </div>
@@ -500,6 +510,7 @@ function BioColumns({
   bloodIds,
   byId,
   childrenOf,
+  matchedIds,
 }: {
   gens: number[]
   /** 已按谱序（房支优先、房内长幼）排好，过滤即保留顺序 */
@@ -507,6 +518,7 @@ function BioColumns({
   bloodIds: Set<number>
   byId: Map<number, Member>
   childrenOf: (id: number) => Member[]
+  matchedIds?: Set<number>
 }) {
   return (
     <div className="combo-cols">
@@ -520,7 +532,9 @@ function BioColumns({
                 className={cn("combo-person", !bloodIds.has(m.id) && "combo-person--extended")}
                 key={m.id}
               >
-                <span className="combo-person__name">{m.name}</span>
+                <span className={cn("combo-person__name", matchedIds?.has(m.id) && "print-hit")}>
+                  {m.name}
+                </span>
                 <span className="combo-person__memo">{buildMemberMemo(m, byId, childrenOf)}</span>
               </div>
             ))}
@@ -535,10 +549,13 @@ const measureName = (name: string) =>
   Math.max(44, Array.from(name).length * CHART_FONT * 1.06 + CHART_PAD_X * 2)
 
 /**
- * 卷内吊线图：父子居中的递归宽度算法，并按纸宽分行。
- * 子树宽度自底向上累加，父落在子辈区间的正中，同一房支的兄弟排在一起；
- * 因此吊线不会斜穿别人的支，房支在图上也是连续的。
- * 一行放不下时整块换行：块内不拆，父子不跨行，行数尽量均分。
+ * 卷内吊线图：世代锁定在固定行（第 N 世恒在第 N 行），父子一律竖线相连，
+ * 横线只在两世之间的空档里横走，绝不穿过任何姓名；横向按「父居中于诸子树正上方」
+ * 递归排布，同一房支的兄弟相邻、房支连续。
+ *
+ * 旧法把子块按纸宽折行堆叠：折行后 lineY = rowTop - 35 而 rowGap = 26，族线会落进
+ * 上一行的姓名区（压线）；折行也让同一世代散落在不同 y（世次乱序）。现按世代定行，
+ * 两种问题一并消除；卷宽由分卷控制，超宽时由 SVG 等比缩放。
  */
 function buildVolumeChart(volume: Volume) {
   const people = volume.people
@@ -561,175 +578,93 @@ function buildVolumeChart(volume: Volume) {
   }
   const roots = people.filter((m) => parentOf(m) == null)
 
-  interface ChartNode {
-    id: number
-    x: number
-    y: number
-  }
-  /** 线段：竖线或横线，坐标为块内相对值 */
-  interface Seg {
-    x1: number
-    y1: number
-    x2: number
-    y2: number
-  }
-  /** 一棵子树排好后的整块：宽高、根的位置、节点坐标、连线 */
-  interface Block {
-    w: number
-    h: number
-    /** 块根相对块左缘的 x */
-    rootX: number
-    nodes: ChartNode[]
-    verticals: Seg[]
-    horizontals: Seg[]
-  }
-
-  /** 子块按可用宽装箱成若干行 */
-  const packRows = (blocks: Block[]): Block[][] => {
-    const rows: Block[][] = []
-    let row: Block[] = []
-    let rowW = 0
-    for (const b of blocks) {
-      const add = (row.length ? CHART_GAP_X : 0) + b.w
-      if (row.length > 0 && rowW + add > CHART_MAX_W) {
-        rows.push(row)
-        row = [b]
-        rowW = b.w
-      } else {
-        row.push(b)
-        rowW += add
-      }
-    }
-    if (row.length > 0) rows.push(row)
-    return rows
-  }
-
-  const rowWidth = (row: Block[]) =>
-    row.reduce((sum, b, i) => sum + b.w + (i ? CHART_GAP_X : 0), 0)
-
-  const blocks = new Map<number, Block>()
-  const build = (m: Member): Block => {
-    const cached = blocks.get(m.id)
-    if (cached) return cached
-    const selfW = measureName(m.name)
+  /* 子树宽：叶取名宽，父取「自身名宽」与「诸子树宽之和（含兄弟间距）」的较大者 */
+  const widthOf = new Map<number, number>()
+  const measure = (m: Member): number => {
+    const cached = widthOf.get(m.id)
+    if (cached !== undefined) return cached
+    const self = measureName(m.name)
     const kids = kidsMap.get(m.id) ?? []
-    if (kids.length === 0) {
-      const leaf: Block = {
-        w: selfW,
-        h: NODE_H,
-        rootX: selfW / 2,
-        nodes: [{ id: m.id, x: selfW / 2, y: 0 }],
-        verticals: [],
-        horizontals: [],
-      }
-      blocks.set(m.id, leaf)
-      return leaf
-    }
-
-    const kidBlocks = kids.map(build)
-    const kidRows = packRows(kidBlocks)
-    const rowWidths = kidRows.map(rowWidth)
-    /* 块宽取父子二者宽的较大者，父落在子女区间正中 */
-    const w = Math.max(selfW, ...rowWidths)
-    const nodes: ChartNode[] = [{ id: m.id, x: w / 2, y: 0 }]
-    const verticals: Seg[] = []
-    const horizontals: Seg[] = []
-
-    /* 子块逐行落位：每行一条族线横贯块宽，竖线只落在族线与块缘，不穿字 */
-    let rowTop = CHART_ROW_H
-    let prevLeft: number | null = null
-    let prevRight = 0
-    let prevLineY = 0
-    for (const [ri, row] of kidRows.entries()) {
-      const rw = rowWidths[ri]
-      const rowH = Math.max(...row.map((b) => b.h))
-      const lineY = rowTop - 35
-      const left = (w - rw) / 2
-      let cursor = left
-      for (const b of row) {
-        for (const n of b.nodes) nodes.push({ id: n.id, x: cursor + n.x, y: rowTop + n.y })
-        for (const v of b.verticals) {
-          verticals.push({
-            x1: cursor + v.x1,
-            y1: rowTop + v.y1,
-            x2: cursor + v.x2,
-            y2: rowTop + v.y2,
-          })
-        }
-        for (const h of b.horizontals) {
-          horizontals.push({
-            x1: cursor + h.x1,
-            y1: rowTop + h.y1,
-            x2: cursor + h.x2,
-            y2: rowTop + h.y2,
-          })
-        }
-        /* 子块根自本行族线垂下 */
-        verticals.push({ x1: cursor + b.rootX, y1: lineY, x2: cursor + b.rootX, y2: rowTop })
-        cursor += b.w + CHART_GAP_X
-      }
-      /* 族线覆盖本行诸子；换行时由上一行族线的端点续下来 */
-      const lineL = left
-      const lineR = left + rw
-      let linkX: number | null = null
-      if (prevLeft != null) {
-        const lo = Math.max(prevLeft, lineL)
-        const hi = Math.min(prevRight, lineR)
-        linkX = lo <= hi ? lo : lineL
-      }
-      const segL = linkX == null ? lineL : Math.min(lineL, linkX)
-      const segR = linkX == null ? lineR : Math.max(lineR, linkX)
-      horizontals.push({ x1: segL, y1: lineY, x2: segR, y2: lineY })
-      if (linkX == null) {
-        /* 首行：父自姓名下端正中垂到族线 */
-        verticals.push({ x1: w / 2, y1: NODE_H, x2: w / 2, y2: lineY })
-      } else {
-        verticals.push({ x1: linkX, y1: prevLineY, x2: linkX, y2: lineY })
-      }
-      prevLeft = segL
-      prevRight = segR
-      prevLineY = lineY
-      rowTop += rowH + CHART_ROW_GAP
-    }
-
-    const h = rowTop - CHART_ROW_GAP
-    const block: Block = { w, h, rootX: w / 2, nodes, verticals, horizontals }
-    blocks.set(m.id, block)
-    return block
+    const kidsW = kids.length
+      ? kids.reduce((sum, k) => sum + measure(k), 0) + (kids.length - 1) * CHART_GAP_X
+      : 0
+    const w = Math.max(self, kidsW)
+    widthOf.set(m.id, w)
+    return w
   }
 
-  const rootBlocks = roots.map(build)
-  /* 顶层按可用宽逐块装箱：宽子树自带一整行，图的总体宽度不超纸面 */
-  const rows = packRows(rootBlocks)
-  const rowWidths = rows.map(rowWidth)
-  const width = Math.max(320, Math.ceil(Math.max(0, ...rowWidths) + 24))
+  /* 水平位置：父恒居中于诸子树区间中点；无子者落在自身列宽中点 */
+  const xOf = new Map<number, number>()
+  const place = (m: Member, left: number) => {
+    const w = measure(m)
+    xOf.set(m.id, left + w / 2)
+    const kids = kidsMap.get(m.id) ?? []
+    if (kids.length === 0) return
+    const kidsTotal =
+      kids.reduce((sum, k) => sum + measure(k), 0) + (kids.length - 1) * CHART_GAP_X
+    let cursor = left + (w - kidsTotal) / 2
+    for (const k of kids) {
+      place(k, cursor)
+      cursor += measure(k) + CHART_GAP_X
+    }
+  }
+  let cursor = 0
+  for (const root of roots) {
+    place(root, cursor)
+    cursor += measure(root) + CHART_GAP_X
+  }
 
+  /* 纵向：第 N 世恒在第 N 行，行距取固定 CHART_ROW_H，世代因此永远对齐 */
+  const gens = people.map(genOf)
+  const minGen = gens.length ? Math.min(...gens) : 1
+  const maxGen = gens.length ? Math.max(...gens) : 1
   const pos = new Map<number, { x: number; y: number }>()
-  const verticals: Seg[] = []
-  const horizontals: Seg[] = []
-  let y = 0
-  for (const row of rows) {
-    const rw = rowWidth(row)
-    const rowH = Math.max(...row.map((b) => b.h))
-    let cursor = (width - 24 - rw) / 2
-    for (const b of row) {
-      for (const n of b.nodes) pos.set(n.id, { x: cursor + n.x, y: y + n.y })
-      for (const v of b.verticals) {
-        verticals.push({ x1: cursor + v.x1, y1: y + v.y1, x2: cursor + v.x2, y2: y + v.y2 })
-      }
-      for (const h of b.horizontals) {
-        horizontals.push({ x1: cursor + h.x1, y1: y + h.y1, x2: cursor + h.x2, y2: y + h.y2 })
-      }
-      cursor += b.w + CHART_GAP_X
-    }
-    y += rowH + CHART_ROW_GAP
+  for (const m of people) {
+    pos.set(m.id, { x: xOf.get(m.id) ?? 0, y: (genOf(m) - minGen) * CHART_ROW_H })
   }
 
-  const height = Math.max(180, y - CHART_ROW_GAP + 12)
+  /* 归一化横向坐标：按「字形实宽」而非布局盒宽取边界。
+     布局盒为防重叠留了较大余量（measureName 含 44px 下限与内边距），
+     照盒宽定视图会让四周空出一大圈、整图被缩小；改用约 1em/字的实宽，
+     图便能贴近内容边界，从而在同等图区内把字号放到最大。 */
+  let minX = Infinity
+  let maxX = -Infinity
+  for (const m of people) {
+    const p = pos.get(m.id)!
+    const half = (Array.from(m.name).length * CHART_FONT) / 2
+    // 左侧另让出朱点（圆心在文字左缘外约 3.6px，半径 2.6px）
+    minX = Math.min(minX, p.x - half - 6)
+    maxX = Math.max(maxX, p.x + half)
+  }
+  if (!Number.isFinite(minX)) {
+    minX = 0
+    maxX = 0
+  }
+  const shift = 12 - minX
+  for (const p of pos.values()) p.x += shift
 
+  /* 连线：父名底垂竖线到「父世与子世之间的空档」中点，横线只在空档里横走，
+     再自此处竖线落到各子名顶——横线恒在上一世姓名之下、下一世姓名之上，绝不压字 */
   const paths: string[] = []
-  for (const v of verticals) paths.push(`M ${v.x1} ${v.y1} V ${v.y2}`)
-  for (const h of horizontals) paths.push(`M ${h.x1} ${h.y1} H ${h.x2}`)
+  for (const m of people) {
+    const kids = kidsMap.get(m.id) ?? []
+    if (kids.length === 0) continue
+    const p = pos.get(m.id)!
+    const py = p.y + NODE_H
+    const midY = p.y + NODE_H + (CHART_ROW_H - NODE_H) / 2
+    const xs = kids.map((k) => pos.get(k.id)!.x)
+    const lo = Math.min(p.x, ...xs)
+    const hi = Math.max(p.x, ...xs)
+    paths.push(`M ${p.x} ${py} V ${midY}`)
+    paths.push(`M ${lo} ${midY} H ${hi}`)
+    for (const k of kids) {
+      const kp = pos.get(k.id)!
+      paths.push(`M ${kp.x} ${midY} V ${kp.y}`)
+    }
+  }
+
+  const width = Math.max(240, Math.ceil(maxX - minX + 16))
+  const height = Math.max(180, (maxGen - minGen) * CHART_ROW_H + NODE_H + 12)
 
   return { people, pos, paths, width, height }
 }
@@ -738,24 +673,33 @@ type VolumeChart = ReturnType<typeof buildVolumeChart>
 
 function ComboChart({
   chart,
-  viewW,
   bloodIds,
+  matchedIds,
 }: {
   chart: VolumeChart
-  /** 全册统一视图宽：末卷内容窄，若按自身宽铺满图区，字会比首页大一圈 */
-  viewW: number
   bloodIds: Set<number>
+  matchedIds?: Set<number>
 }) {
   const { people, pos, paths, width, height } = chart
+  /* 视图宽 = 本卷内容实宽 + 左侧世次标尺：每卷按自身内容贴合图区，
+     字号随内容自动放大，两侧不留空 */
+  const viewW = width + CHART_RULER_W
+  /* 外衍开启后单代人数骤增（图宽可达 2000+ 单位），一味等比缩小会把姓名压到 3~4px。
+     给一个 1:1 上限（最多 1400px）：窄图仍按容器自适应，超宽图则横向滚动，
+     保证开/关外衍两种状态下字号都不会小到不可读；打印时由 @media print 复位。 */
+  /* 世次标尺：与吊线图的世代行一一对齐（行距恒为 CHART_ROW_H） */
+  const gens = [...new Set(people.map((m) => genOf(m)))].sort((a, b) => a - b)
+  const minGen = gens.length ? gens[0] : 1
   return (
     <svg
       className="combo-frame__chart"
       viewBox={`0 0 ${viewW} ${height}`}
+      style={{ minWidth: viewW > 1200 ? 1280 : undefined }}
       role="img"
       aria-label="卷内吊线图"
     >
-      {/* 内容在统一视图内水平居中；首卷 viewW 即其自身宽，位置与改动前一致 */}
-      <g transform={`translate(${(viewW - width) / 2} 0)`}>
+      {/* 左侧留出世次标尺的固定宽度，内容紧接标尺铺开，不额外留白 */}
+      <g transform={`translate(${CHART_RULER_W} 0)`}>
         {paths.map((d, i) => (
           <path key={i} d={d} fill="none" stroke="#c9c4b8" strokeWidth="1" />
         ))}
@@ -780,18 +724,41 @@ function ComboChart({
                 stroke={blood ? "#b3261e" : "#8f8a80"}
                 strokeWidth="1"
               />
-              <text x={p.x + 2} y={cy + 4.5} textAnchor="middle" fontSize={CHART_FONT} fill="#1c1c1c">
+              <text
+                x={p.x + 2}
+                y={cy + 4.5}
+                textAnchor="middle"
+                fontSize={CHART_FONT}
+                fill={matchedIds?.has(m.id) ? "#c2410c" : "#1c1c1c"}
+                fontWeight={matchedIds?.has(m.id) ? 700 : undefined}
+              >
                 {m.name}
               </text>
             </g>
           )
         })}
       </g>
+      {/* 左侧世次标尺：每世一枚，纵向对齐该世行心 */}
+      <g className="combo-chart-ruler">
+        {gens.map((gen) => (
+          <text
+            key={gen}
+            x={8}
+            y={(gen - minGen) * CHART_ROW_H + NODE_H / 2 + 4.5}
+            textAnchor="start"
+            fontSize={9.5}
+            fill="#8f7134"
+            letterSpacing="0.14em"
+          >
+            {toChineseNumber(gen)}世
+          </text>
+        ))}
+      </g>
     </svg>
   )
 }
 
-export function PaperSheets({ members, allMembers, frameMembers, family, bloodIds, layout }: Props) {
+export function PaperSheets({ members, allMembers, frameMembers, family, bloodIds, layout, matchedIds }: Props) {
   /* 谱序：房支优先、房内长幼。行传与卷内图都吃这一份顺序 */
   const ordered = useMemo(
     () => lineageOrder(members, family.branches),
@@ -802,10 +769,6 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
      字会被放得比首页大一圈（表现为第二页字体过大）。基准取全册最宽卷，
      首卷通常就是最宽者，故首页排版不变。 */
   const charts = useMemo(() => volumes.map(buildVolumeChart), [volumes])
-  const chartViewW = useMemo(
-    () => Math.max(CHART_MAX_W + 24, ...charts.map((c) => c.width)),
-    [charts],
-  )
   const { allById, allChildrenOf } = useMemo(() => {
     const map = new Map(allMembers.map((m) => [m.id, m]))
     return {
@@ -818,6 +781,25 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
   }, [allMembers])
   const euro = useEuroLayout(members, family, allById, allChildrenOf)
 
+  /* 各分页等高：量出所有 .combo-frame 的自然高度，取最大值回写为 min-height，
+     使第 2 页起与第 1 页高度完全对齐（宽度已由固定 --combo-bio-w 保证一致）。 */
+  const comboRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const root = comboRef.current
+    if (!root) return
+    const apply = () => {
+      const frames = Array.from(root.querySelectorAll<HTMLElement>(".combo-frame"))
+      if (frames.length === 0) return
+      for (const f of frames) f.style.minHeight = ""
+      const max = Math.max(...frames.map((f) => f.offsetHeight))
+      if (max > 0) for (const f of frames) f.style.minHeight = `${max}px`
+    }
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(root)
+    return () => ro.disconnect()
+  }, [volumes, charts])
+
   if (layout === "euro") {
     if (euro.charts.length === 0) return <p className="print-empty">此谱暂无可排入的成员。</p>
     return (
@@ -827,6 +809,7 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
         byId={allById}
         childrenOf={allChildrenOf}
         bloodIds={bloodIds}
+        matchedIds={matchedIds}
       />
     )
   }
@@ -836,11 +819,16 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
   }
 
   return (
-    <>
+    <div ref={comboRef} className="combo-volumes">
       {volumes.map((volume, vi) => (
         <section className="print-sheet print-sheet--combo" key={volume.index}>
           <SheetHead family={family} volume={volume} total={volumes.length} />
-          <div className="combo-frame">
+          <div
+            className="combo-frame"
+            /* 小传区定宽取「分卷预算 + 表头余量」这个常量（不是本卷实际内容宽），
+               保证图区宽度恒定，右图大小不随左栏列数多少变化 */
+            style={{ "--combo-bio-w": `${MAX_BIO_WIDTH + 40}px` } as CSSProperties}
+          >
             <div className="combo-frame__bio">
               <BioColumns
                 gens={volume.gens}
@@ -848,6 +836,7 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
                 bloodIds={bloodIds}
                 byId={allById}
                 childrenOf={allChildrenOf}
+                matchedIds={matchedIds}
               />
             </div>
             <div className="combo-frame__spine">
@@ -856,12 +845,12 @@ export function PaperSheets({ members, allMembers, frameMembers, family, bloodId
               <i>{`公元二〇二六年\u3000岁次丙午`}</i>
             </div>
             <div className="combo-frame__chart-wrap">
-              <ComboChart chart={charts[vi]} viewW={chartViewW} bloodIds={bloodIds} />
+              <ComboChart chart={charts[vi]} bloodIds={bloodIds} matchedIds={matchedIds} />
             </div>
           </div>
           <SheetFoot volume={volume} total={volumes.length} />
         </section>
       ))}
-    </>
+    </div>
   )
 }

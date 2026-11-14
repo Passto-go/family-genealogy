@@ -34,8 +34,6 @@ export interface Family {
   showExtendedLineage: boolean
   /** 是否在前台公开展示：关闭后门户不列出、直接访问按不存在处理 */
   isPublished: boolean
-  /** 谱页是否排入出嫁女子后裔（两层，至孙辈，与世系图口径一致）：默认不含，仅超管可改 */
-  printIncludeExtended: boolean
   createdBy: string
   updatedBy: string
   createdAt: string
@@ -195,6 +193,8 @@ export interface Repo {
   clearSpouse(spouseId: number): Promise<void>
   setSpouseId(id: number, spouseId: number | null): Promise<void>
   countMembers(familyId?: number): Promise<number>
+  /** 世次数：该谱出现过的 generation 去重计数，供总目列表显示「N 人 / M 世」 */
+  countGenerations(familyId: number): Promise<number>
 
   /**
    * 批量导入：按传入顺序逐条插入，批内亲属按「表内编号」解析成真实 id。
@@ -344,7 +344,6 @@ export function rowToFamily(row: Record<string, unknown>): Family {
     policeNumber: String(row.police_number ?? ""),
     showExtendedLineage: Number(row.show_extended_lineage ?? 0) === 1,
     isPublished: Number(row.is_published ?? 1) === 1,
-    printIncludeExtended: Number(row.print_include_extended ?? 0) === 1,
     createdBy: String(row.created_by_name ?? ""),
     updatedBy: String(row.updated_by_name ?? ""),
     createdAt: String(row.created_at ?? ""),

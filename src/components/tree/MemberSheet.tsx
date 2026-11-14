@@ -1,15 +1,13 @@
 import { useMemo } from "react"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { MemberAvatar } from "@/components/MemberAvatar"
-import { computeVisibleLineageIds, generationLabel, lifeSpan, type Member } from "@/lib/types"
+import { generationLabel, lifeSpan, type Member } from "@/lib/types"
 
 interface MemberSheetProps {
   member: Member | null
   members: Member[]
   onOpenChange: (open: boolean) => void
   onNavigate: (member: Member) => void
-  /** 是否延伸展示出嫁女子后裔：关闭时隐藏外姓配偶与出嫁女之外衍子女 */
-  showExtended?: boolean
 }
 
 function InfoRow({ label, value }: { label: string; value?: string }) {
@@ -69,26 +67,22 @@ function RelationRow({
   )
 }
 
-export function MemberSheet({ member, members, onOpenChange, onNavigate, showExtended = false }: MemberSheetProps) {
+export function MemberSheet({ member, members, onOpenChange, onNavigate }: MemberSheetProps) {
   const byId = useMemo(() => new Map(members.map((m) => [m.id, m])), [members])
-  const visibleIds = useMemo(() => computeVisibleLineageIds(members, showExtended), [members, showExtended])
 
   const relations = useMemo(() => {
     if (!member) return { father: null, mother: null, spouse: null, children: [] as Member[] }
     return {
       father: member.fatherId ? (byId.get(member.fatherId) ?? null) : null,
       mother: member.motherId ? (byId.get(member.motherId) ?? null) : null,
-      // 配偶为外姓：仅开启延伸展示时可见（关闭则严格仅本族）
-      spouse: showExtended && member.spouseId ? (byId.get(member.spouseId) ?? null) : null,
-      // 子嗣仅展示可见集合内的成员（关闭时出嫁女之外衍子女不列入）
+      // 配偶、子嗣始终完整展示，不受「出嫁女子后裔」开关影响；
+      // 该开关只控制画布页面层的节点展示，不得改动详情内容。
+      spouse: member.spouseId ? (byId.get(member.spouseId) ?? null) : null,
       children: members
-        .filter(
-          (m) =>
-            (m.fatherId === member.id || m.motherId === member.id) && visibleIds.has(m.id),
-        )
+        .filter((m) => m.fatherId === member.id || m.motherId === member.id)
         .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
     }
-  }, [member, members, byId, showExtended, visibleIds])
+  }, [member, members, byId])
 
   return (
     <Sheet open={Boolean(member)} onOpenChange={onOpenChange}>
